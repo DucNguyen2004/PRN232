@@ -1,0 +1,145 @@
+﻿@using DTOs
+@using System.Globalization
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Chi tiết đơn hàng #@SelectedOrder.Id</h5>
+            <span class="badge @GetStatusBadgeClass(SelectedOrder.OrderStatus)">
+                @GetStatusText(SelectedOrder.OrderStatus)
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <h6 class="fw-bold">Thông tin đơn hàng</h6>
+                <p class="mb-1"><strong>Ngày đặt:</strong> @SelectedOrder.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
+                <p class="mb-1"><strong>Phương thức thanh toán:</strong> Tiền mặt khi nhận hàng</p>
+                <p class="mb-0"><strong>Ghi chú:</strong> @(string.IsNullOrEmpty(SelectedOrder.Message) ? "Không có" : SelectedOrder.Message)</p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="fw-bold">Địa chỉ giao hàng</h6>
+                <p class="mb-1"><strong>Người nhận:</strong> @SelectedOrder.User.Fullname</p>
+                <p class="mb-1"><strong>Số điện thoại:</strong> @SelectedOrder.User.Phone</p>
+                <p class="mb-0"><strong>Địa chỉ:</strong> @SelectedOrder.ShippingAddress</p>
+            </div>
+        </div>
+
+        <h6 class="fw-bold mb-3">Sản phẩm</h6>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="text-center">Số lượng</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-end">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in SelectedOrder.OrderDetails)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    @* <img src="@(item.Product.Images.Any() ? item.Product.Images.First() : "images/default-img.png")"
+                                         alt="@item.Product.Name" width="50" height="50" class="me-2" style="object-fit: cover;" /> *@
+                                    <div>
+                                        <div>@item.Product.Name</div>
+                                        @if (item.ProductOptions?.Any() == true)
+                                        {
+                                            <small class="text-muted">
+                                                @string.Join(", ", item.ProductOptions.Select(po => po.Name + " (" + po.Type + ")"))
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">@item.Quantity</td>
+                            <td class="text-end">@FormatPrice(item.Price + item.ProductOptions?.Sum(po => po.DeltaPrice))</td>
+                            <td class="text-end">@FormatPrice((item.Price + item.ProductOptions?.Sum(po => po.DeltaPrice)) * item.Quantity)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6 ms-auto">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Tạm tính:</span>
+                    <span>@FormatPrice(SelectedOrder.OrderDetails.Sum(i => (i.Price + i.ProductOptions?.Sum(po => po.DeltaPrice)) * i.Quantity))</span>
+                </div>
+                @* <div class="d-flex justify-content-between mb-2">
+                                    <span>Phí vận chuyển:</span>
+                                    <span>@FormatPrice(SelectedOrder.ShippingFee)</span>
+                                </div> *@
+                @if (SelectedOrder.DiscountPrice > 0)
+                {
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Giảm giá:</span>
+                        <span>-@FormatPrice(SelectedOrder.DiscountPrice)</span>
+                    </div>
+                }
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>Tổng cộng:</span>
+                    <span>@FormatPrice(SelectedOrder.OrderDetails.Sum(i => (i.Price + i.ProductOptions?.Sum(po => po.DeltaPrice)) * i.Quantity) - SelectedOrder.DiscountPrice)</span>
+                </div>
+            </div>
+        </div>
+
+        @if (SelectedOrder.OrderStatus == "PENDING")
+        {
+            <div class="d-flex justify-content-end mt-4">
+                <button class="btn btn-outline-danger" @onclick="() => CancelOrder(SelectedOrder.Id)">
+                    Hủy đơn hàng
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+	[Parameter] public OrderResponseDto SelectedOrder { get; set; } = new OrderResponseDto();
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+
+    private async Task CancelOrder(int orderId)
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var response = await client.PutAsJsonAsync<string>($"api/order/{orderId}", "CANCELLED");
+
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "COMPLETED" => "bg-success",
+            "PENDING" => "bg-primary",
+            "SHIPPING" => "bg-info",
+            "CANCELLED" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusText(string status)
+    {
+        return status switch
+        {
+            "COMPLETED" => "Đã giao",
+            "PENDING" => "Chờ xác nhận",
+            "SHIPPING" => "Đang giao",
+            "CANCELLED" => "Đã hủy",
+            _ => "Không xác định"
+        };
+    }
+}

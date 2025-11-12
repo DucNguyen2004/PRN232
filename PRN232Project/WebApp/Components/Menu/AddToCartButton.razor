@@ -1,0 +1,107 @@
+﻿@using DTOs
+@using Blazored.Toast.Services
+@inject Blazored.Toast.Services.IToastService ToastService
+
+<button class="btn btn-add-cart mt-3 w-100" @onclick:stopPropagation="true" @onclick="HandleAddToCart">
+    <i class="bi bi-cart-plus me-2"></i>
+    @(IsInCart ? $"Thêm {Quantity} sản phẩm" : "Thêm vào giỏ")
+</button>
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+    [Parameter] public List<int> Options { get; set; } = new List<int>();
+    [Parameter] public int Quantity { get; set; }
+
+    [Inject] private IHttpClientFactory HttpClientFactory { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private bool IsInCart = false;
+    private CartItemResponseDto? ExistingCartItem = null;
+    private List<int> _previousOptions = new List<int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckCartItemExists();
+        _previousOptions = new List<int>(Options);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Check if Options have changed
+        if (!Options.OrderBy(x => x).SequenceEqual(_previousOptions.OrderBy(x => x)))
+        {
+            await CheckCartItemExists();
+            _previousOptions = new List<int>(Options);
+        }
+    }
+
+    private async Task CheckCartItemExists()
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+
+        var response = await client.GetFromJsonAsync<ApiResponseDto<UserCartResponseDto>>("api/cart");
+
+        if (response?.Data?.CartItems != null)
+        {
+            var existing = response.Data.CartItems.FirstOrDefault(item =>
+                item.Product.Id == ProductId &&
+                item.ProductOptions.Select(po => po.Id).OrderBy(x => x).SequenceEqual(Options.OrderBy(x => x)));
+
+            if (existing != null)
+            {
+                IsInCart = true;
+                ExistingCartItem = existing;
+            }
+            else
+            {
+                IsInCart = false;
+                ExistingCartItem = null;
+            }
+        }
+        else
+        {
+            IsInCart = false;
+            ExistingCartItem = null;
+        }
+    }
+
+    private async Task HandleAddToCart()
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+
+        if (IsInCart && ExistingCartItem != null)
+        {
+            // PUT to update quantity
+            var putRes = await client.PutAsJsonAsync($"api/cart/{ExistingCartItem.Id}", ExistingCartItem.Quantity + Quantity);
+
+            if (putRes.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Đã cập nhật giỏ hàng.");
+                await CheckCartItemExists();
+            }
+            else
+                ToastService.ShowError("Không thể cập nhật giỏ hàng.");
+        }
+        else
+        {
+            var payload = new CartItemRequestDto
+            {
+                ProductId = ProductId,
+                ProductOptionIds = Options,
+                Quantity = Quantity
+            };
+
+            var postRes = await client.PostAsJsonAsync("api/cart", payload);
+
+            if (postRes.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Sản phẩm đã được thêm vào giỏ hàng.");
+                await CheckCartItemExists(); // update state
+            }
+            else
+            {
+                ToastService.ShowError("Đã xảy ra lỗi khi thêm sản phẩm.");
+            }
+        }
+    }
+}

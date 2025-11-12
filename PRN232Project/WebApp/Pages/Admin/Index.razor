@@ -1,0 +1,98 @@
+﻿@page "/admin"
+@layout AdminLayout
+@using Blazored.LocalStorage;
+@using Microsoft.AspNetCore.Authorization
+@* @attribute [Authorize(Roles = "admin")] *@
+@inject NavigationManager Navigation
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager Navigation
+
+<div class="page-wrapper">
+    <h2 class="admin-section-title mb-4">Admin Dashboard</h2>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="admin-card p-4 text-center">
+                <div class="admin-card-icon mb-3">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <h4 class="mb-3">Sản phẩm</h4>
+                <button @onclick="() => NavigateToProduct()" class="btn btn-accent">
+                    <i class="bi bi-arrow-right"></i> Đi tới Sản phẩm
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="admin-card p-4 text-center">
+                <div class="admin-card-icon mb-3">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <h4 class="mb-3">Đơn hàng</h4>
+                <button @onclick="() => NavigateToOrder()" class="btn btn-accent">
+                    <i class="bi bi-arrow-right"></i> Đi tới Đơn hàng
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="admin-card p-4 text-center">
+                <div class="admin-card-icon mb-3">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h4 class="mb-3">Tài khoản</h4>
+                <button @onclick="() => NavigateToAccount()" class="btn btn-accent">
+                    <i class="bi bi-arrow-right"></i> Đi tới Tài khoản
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="admin-card p-4 text-center">
+                <div class="admin-card-icon mb-3">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h4 class="mb-3">Mã giảm giá</h4>
+                <button @onclick="() => NavigateToCoupon()" class="btn btn-accent">
+                    <i class="bi bi-arrow-right"></i> Đi tới Mã giảm giá
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var role = await localStorage.GetItemAsync<string>("userRole");
+        if (role != "admin")
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void NavigateToProduct()
+    {
+        Navigation.NavigateTo("/admin/products");
+    }
+
+    private void NavigateToOrder()
+    {
+        Navigation.NavigateTo("/admin/orders");
+    }
+
+    private void NavigateToAccount()
+    {
+        Navigation.NavigateTo("/admin/accounts");
+    }
+
+    private void NavigateToCoupon()
+    {
+        Navigation.NavigateTo("/admin/coupons");
+    }
+
+    private void NavigateToPage(string page)
+    {
+        Navigation.NavigateTo(page);
+	}
+}

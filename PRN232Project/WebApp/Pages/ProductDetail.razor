@@ -1,0 +1,245 @@
+﻿@page "/product/{ProductId:int}"
+@using DTOs
+@using System.Globalization
+@using FE_PRN232Project.Components.Menu
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Chi tiết sản phẩm - Việt Coffee</PageTitle>
+
+@if (product == null)
+    {
+    <div class="container py-5 text-center">
+        <div class="spinner-border text-success" role="status"></div>
+        <div>Đang tải sản phẩm...</div>
+    </div>
+    }
+    else
+    {
+    <div class="container py-5">
+        <div class="row g-4">
+            <div class="col-md-5">
+                <img src="@(product.Images.Any() ? $"images/{product.Images.First()}" : "images/default-img.png")" alt="@product.Name" class="img-fluid rounded shadow-sm w-100" style="max-height:400px;object-fit:cover;" />
+            </div>
+            <div class="col-md-7">
+                <h2 class="mb-2">@product.Name</h2>
+                <div class="mb-2 text-muted">@product.Category?.Name</div>
+                <div class="mb-3 fs-4 fw-bold text-accent">@FormatPrice(CurrentPrice)</div>
+                @* <div class="mb-2 small text-muted">Đã bán: <b>@product.Sold</b></div> *@
+                <div class="mb-3">@product.Description</div>
+                <div class="mb-3">
+                    <span class="fw-semibold">Tùy chọn:</span>
+                    @if (optionGroups.Any())
+                    {
+                        @foreach (var group in optionGroups)
+                        {
+                            <div class="mb-2">
+                                <div class="fw-semibold mb-1">@group.Key:</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var opt in group.Value)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline-dark btn-sm option-btn
+                                                       @(selectedOptions.ContainsKey(group.Key) && selectedOptions[group.Key].Id == opt.Id ? "active" : "")
+                                                       @(opt.Enabled ? "" : "disabled")"
+                                                @onclick="() => OnOptionSelected(group.Key, opt)"
+                                                disabled="@(opt.Enabled ? null : true)"
+                                        >
+                                                @opt.Type
+                                                @if(opt.DeltaPrice > 0) {
+                                                    <span class="text-accent small">+@FormatPrice(opt.DeltaPrice)</span>
+                                                }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <span>Không có</span>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <input type="number" class="form-control" style="width:80px;" min="1" value="@quantity" @oninput="OnQuantityChanged" />
+                    <AddToCartButton ProductId="@product.Id" Options="@SelectedOptionIds" Quantity="@quantity" />
+                </div>
+                @* <p class="text-muted small">
+                    Selected option IDs: @string.Join(", ", selectedOptions.Values.Select(o => o.Id))
+                </p> *@
+                <button class="btn btn-outline-secondary" @onclick="GoBack"><i class="bi bi-arrow-left me-2"></i>Quay lại thực đơn</button>
+            </div>
+        </div>
+    </div>
+    }
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+    private ProductResponseDto? product;
+    private int quantity = 1;
+
+    private Dictionary<string, List<OptionDto>> optionGroups = new();
+    private Dictionary<string, OptionDto> selectedOptions = new();
+    private int CurrentPrice => selectedOptions.Values.Sum(o => o.DeltaPrice) + (int)(product?.Price ?? 0);
+    private List<int> SelectedOptionIds => selectedOptions.Values.Select(o => o.Id).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var detailResp = await Http.GetFromJsonAsync<ApiResponseDto<ProductResponseDto>>($"api/product/{ProductId}");
+        product = detailResp?.Data;
+
+        // var menu = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>($"api/product");
+        // RecommendedProducts = menu?.Data?
+        //     .Where(p => p.Price == Product?.Price || p.Category.Name.Equals(Product?.Category.Name))
+        //     .Take(8).ToList() ?? new List<ProductResponseDto>();
+
+        if (product != null)
+        {
+            InitializeOptions();
+        }
+    }
+
+    private void InitializeOptions()
+    {
+        var allTypes = new Dictionary<string, List<string>>
+            {
+                { "Size", new List<string>{"S","M","L"} },
+                { "Đá", new List<string>{"0%","50%","100%"} },
+                { "Đường", new List<string>{"30%","50%","100%"} },
+                { "Nhiệt độ", new List<string>{"Nóng"} }
+            };
+
+        var incoming = product.Options.Select(o => new OptionDto
+        {
+            Id = o.Id,
+            Name = o.Name,
+            Type = o.Type,
+            DeltaPrice = o.DeltaPrice,
+            Enabled = true
+        }).ToList();
+
+        bool hasEnabledIce = false;
+
+        foreach (var grp in allTypes)
+        {
+            optionGroups[grp.Key] = grp.Value.Select(t =>
+            {
+                var opt = incoming.FirstOrDefault(o => o.Name == grp.Key && o.Type == t);
+                return new OptionDto
+                {
+                    Id = opt?.Id ?? 0,
+                    Name = grp.Key,
+                    Type = t,
+                    DeltaPrice = opt?.DeltaPrice ?? 0,
+                    Enabled = opt != null
+                };
+            }).ToList();
+
+            var options = optionGroups[grp.Key].Where(o => o.Enabled).ToList();
+            if (!options.Any()) continue;
+
+            OptionDto? selected = null;
+
+            switch (grp.Key)
+            {
+                case "Size":
+                    var sizePriority = new[] { "M", "L", "S" };
+                    selected = options
+                        .OrderBy(o => Array.IndexOf(sizePriority, o.Type))
+                        .FirstOrDefault();
+                    break;
+
+                case "Đá":
+                    var icePriority = new[] { "100%", "50%", "0%", "Nóng" };
+                    selected = options
+                        .OrderBy(o => Array.IndexOf(icePriority, o.Type))
+                        .FirstOrDefault();
+
+                    hasEnabledIce = options.Any(); // used for fallback logic
+                    break;
+
+                case "Đường":
+                    var sugarPriority = new[] { "100%", "50%", "30%" };
+                    selected = options
+                        .OrderBy(o => Array.IndexOf(sugarPriority, o.Type))
+                        .FirstOrDefault();
+                    break;
+
+                case "Nhiệt độ":
+                    // Only auto-select "Nóng" if Đá is not available
+                    if (!hasEnabledIce)
+                    {
+                        selected = options.FirstOrDefault(o => o.Type == "Nóng");
+                    }
+                    break;
+
+                default:
+                    selected = options.FirstOrDefault();
+                    break;
+            }
+
+            if (selected != null)
+            {
+                selectedOptions[grp.Key] = selected;
+            }
+        }
+    }
+
+    private void OnOptionSelected(string group, OptionDto option)
+    {
+        if (!option.Enabled)
+            return;
+
+        // Special logic: Ice vs Temperature
+        if (group == "Nhiệt độ" && option.Type == "Nóng")
+        {
+            // Remove selected Ice option if any
+            selectedOptions.Remove("Đá");
+        }
+        else if (group == "Đá")
+        {
+            // Remove Hot selection if any
+            if (selectedOptions.TryGetValue("Nhiệt độ", out var temp) && temp.Type == "Nóng")
+                selectedOptions.Remove("Nhiệt độ");
+        }
+
+        selectedOptions[group] = option;
+    }
+
+    private void OnQuantityChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var val) && val > 0)
+            quantity = val;
+    }
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/menu");
+
+    private class OptionDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public int DeltaPrice { get; set; }
+        public bool Enabled { get; set; }
+    }
+}
+
+<style>
+    .option-btn.active, .option-btn:active {
+        background-color: var(--accent-color) !important;
+        color: var(--main-color) !important;
+        border-color: var(--accent-color) !important;
+    }
+
+    .option-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+</style>

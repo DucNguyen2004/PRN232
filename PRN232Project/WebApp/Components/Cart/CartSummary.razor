@@ -1,0 +1,55 @@
+﻿@using System.Globalization
+@using DTOs
+@using FE_PRN232Project.States
+@inject CheckoutState CheckoutState
+@inject NavigationManager Navigation
+
+<!-- Cart Summary UI -->
+<div class="p-4 shadow rounded bg-white">
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <span class="fw-bold">Add note</span>
+        <i class="bi bi-pencil"></i>
+    </div>
+
+    <textarea class="form-control mb-4" rows="2" placeholder="Write something here to seller." @bind="Note"></textarea>
+
+    <div class="d-flex justify-content-between mb-2">
+        <span>Discount</span>
+        <span>@FormatPrice(0)</span>
+    </div>
+
+    <div class="d-flex justify-content-between fw-bold mb-3">
+        <span>Subtotal</span>
+        <span>@FormatPrice(Subtotal)</span>
+    </div>
+
+    <p class="text-muted small">Taxes and shipping calculated at checkout</p>
+
+    <button class="btn btn-dark w-100 mt-3" @onclick="GoToCheckout">Check out</button>
+</div>
+
+@code {
+    [Parameter] public List<CartItemResponseDto> CartItems { get; set; } = new();
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private string Note { get; set; } = string.Empty;
+
+    private int Subtotal => CartItems?.Sum(i =>
+        (
+            (i?.Product?.Price ?? 0) +
+            (i?.ProductOptions?.Sum(po => po.DeltaPrice) ?? 0)
+        ) * (i?.Quantity ?? 0)
+    ) ?? 0;
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+
+    private void GoToCheckout()
+    {
+		CheckoutState.Message = Note;
+		CheckoutState.CartData = CartItems;
+        Navigation.NavigateTo("/checkout");
+    }
+}

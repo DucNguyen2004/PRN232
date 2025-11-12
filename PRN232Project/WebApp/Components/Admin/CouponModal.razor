@@ -1,0 +1,209 @@
+﻿@using DTOs
+@inject HttpClient Http
+
+<EditForm Model="Model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+
+    <Modal @bind-IsVisible="IsVisible" Title="@Title">
+        <div class="form-group mb-2">
+            <label>Mã Coupon</label>
+            <InputText class="form-control" @bind-Value="Model.Code" />
+            <ValidationMessage For="@(() => Model.Code)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Tên Coupon</label>
+            <InputText class="form-control" @bind-Value="Model.Name" />
+            <ValidationMessage For="@(() => Model.Name)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Mô tả</label>
+            <InputTextArea class="form-control" @bind-Value="Model.Description" />
+            <ValidationMessage For="@(() => Model.Description)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <div class="form-check">
+                <InputCheckbox class="form-check-input" @bind-Value="_isActive" />
+                <label class="form-check-label">Kích hoạt mã giảm giá</label>
+            </div>
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Giá trị giảm</label>
+            <InputNumber class="form-control" @bind-Value="Model.Value" />
+            <ValidationMessage For="@(() => Model.Value)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Loại giảm</label>
+            <InputSelect class="form-select" @bind-Value="Model.ValueType">
+                <option value="FIXED">Giảm cố định</option>
+                <option value="PERCENT">Giảm theo %</option>
+            </InputSelect>
+            <ValidationMessage For="@(() => Model.ValueType)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Giá trị đơn hàng tối thiểu</label>
+            <InputNumber class="form-control" @bind-Value="Model.MinOrderValue" />
+            <ValidationMessage For="@(() => Model.MinOrderValue)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Lượng tài khoản có thể sử dụng</label>
+            <InputNumber class="form-control" @bind-Value="Model.MaxUsages" />
+            <ValidationMessage For="@(() => Model.MaxUsages)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Ngày bắt đầu hiệu lực</label>
+            <InputDate class="form-control" @bind-Value="Model.DateValid" />
+            <ValidationMessage For="@(() => Model.DateValid)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-2">
+            <label>Ngày hết hạn</label>
+            <InputDate class="form-control" @bind-Value="Model.DateExpired" />
+            <ValidationMessage For="@(() => Model.DateExpired)" class="text-danger" />
+        </div>
+
+        <div class="form-group mb-3">
+            <div class="form-check mb-2">
+                <InputCheckbox class="form-check-input" @bind-Value="ApplyForEnabled" />
+                <label class="form-check-label">Áp dụng cho sản phẩm hoặc danh mục</label>
+            </div>
+
+            @if (ApplyForEnabled)
+            {
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <label>Áp dụng cho</label>
+                        <InputSelect class="form-select" @bind-Value="ApplyForType">
+                            <option value="">-- Chọn --</option>
+                            <option value="product">Sản phẩm</option>
+                            <option value="category">Danh mục</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6 mb-2">
+                        @if (ApplyForType == "product")
+                        {
+                            <label>Sản phẩm</label>
+                            <InputSelect class="form-select" @bind-Value="Model.ProductId">
+                                <option value="">-- Chọn sản phẩm --</option>
+                                @foreach (var p in ProductOptions)
+                                {
+                                    <option value="@p.Id">@p.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => Model.ProductId)" class="text-danger" />
+                        }
+                        else if (ApplyForType == "category")
+                        {
+                            <label>Danh mục</label>
+                            <InputSelect class="form-select" @bind-Value="Model.CategoryId">
+                                <option value="">-- Chọn danh mục --</option>
+                                @foreach (var c in CategoryOptions)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => Model.CategoryId)" class="text-danger" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary" @onclick="Close">Hủy</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i> Lưu
+            </button>
+        </div>
+    </Modal>
+</EditForm>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    [Parameter] public CouponRequestDto Model { get; set; } = new();
+    [Parameter] public string Title { get; set; } = "Thêm / Sửa Coupon";
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    private bool _isActive
+    {
+        get => Model.Status == "ACTIVE";
+        set => Model.Status = value ? "ACTIVE" : "INACTIVE";
+    }
+
+    private bool ApplyForEnabled
+    {
+        get => Model.ProductId != null || Model.CategoryId != null;
+        set
+        {
+            if (!value)
+            {
+                Model.ProductId = null;
+                Model.CategoryId = null;
+            }
+            else
+            {
+                // Optional: set a default selection when enabled
+                if (string.IsNullOrEmpty(ApplyForType))
+                {
+                    ApplyForType = "product";
+                }
+            }
+        }
+    }
+
+    private string ApplyForType
+    {
+        get => Model.ProductId != null ? "product" : Model.CategoryId != null ? "category" : "";
+        set
+        {
+            if (value == "product")
+            {
+                Model.ProductId = ProductOptions.FirstOrDefault()?.Id;
+                Model.CategoryId = null;
+            }
+            else if (value == "category")
+            {
+                Model.CategoryId = CategoryOptions.FirstOrDefault()?.Id;
+                Model.ProductId = null;
+            }
+            else
+            {
+                Model.ProductId = null;
+                Model.CategoryId = null;
+            }
+        }
+    }
+
+    private List<ProductCouponResponseDto> ProductOptions = new();
+    private List<CategoryResponseDto> CategoryOptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load product and category options
+        ProductOptions = (await Http.GetFromJsonAsync<ApiResponseDto<List<ProductCouponResponseDto>>>("api/product"))
+                            ?.Data ?? new();
+        CategoryOptions = (await Http.GetFromJsonAsync<ApiResponseDto<List<CategoryResponseDto>>>("api/category"))
+                            ?.Data ?? new();
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync(null);
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task Close()
+    {
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}

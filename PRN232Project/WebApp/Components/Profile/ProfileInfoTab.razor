@@ -1,0 +1,270 @@
+﻿@using DTOs
+@using FE_PRN232Project.Services
+@using Blazored.Toast.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject Blazored.Toast.Services.IToastService ToastService
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Thông tin cá nhân</h5>
+            <button class="btn btn-sm btn-outline-primary" @onclick="EnableEditing">
+                <i class="bi bi-pencil me-1"></i> Chỉnh sửa
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <EditForm EditContext="editContext" OnValidSubmit="SaveProfile" OnInvalidSubmit="OnInvalidSubmit">
+            <DataAnnotationsValidator />
+            @* <ValidationSummary /> *@
+
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label">Họ và tên</label>
+                    <InputText class="form-control" @bind-Value="UserProfile.Fullname" disabled="@(!isEditing)" />
+                    <ValidationMessage For="@(() => UserProfile.Fullname)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tên đăng nhập</label>
+                    <InputText class="form-control" @bind-Value="UserProfile.Username" disabled />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="UserProfile.Email" disabled="@(!isEditing)" />
+                    <ValidationMessage For="@(() => UserProfile.Email)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Số điện thoại</label>
+                    <InputText class="form-control" @bind-Value="UserProfile.Phone" disabled="@(!isEditing)" />
+                    <ValidationMessage For="@(() => UserProfile.Phone)" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label">Giới tính</label>
+                    <InputSelect class="form-select" @bind-Value="UserProfile.Gender" disabled="@(!isEditing)">
+                        <option value="Male">Nam</option>
+                        <option value="Female">Nữ</option>
+                        <option value="Other">Khác</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày sinh</label>
+                    <InputDate class="form-control" @bind-Value="UserProfile.Dob" disabled="@(!isEditing)" />
+                </div>
+            </div>
+
+            @if (isEditing)
+            {
+                <div class="d-flex gap-2 justify-content-end">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelEditing">Huỷ</button>
+                    <button type="submit" class="btn btn-accent">Lưu thay đổi</button>
+                </div>
+            }
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public UserResponseDto UserProfile { get; set; } = new UserResponseDto();
+    [Parameter] public EventCallback GetProfile { get; set; }
+
+    private bool isEditing = false;
+    private EditContext? editContext;
+    private ValidationMessageStore? messageStore;
+    private UserResponseDto originalProfile = new UserResponseDto();
+
+    protected override void OnParametersSet()
+    {
+        if (editContext?.Model != UserProfile)
+        {
+            editContext = new EditContext(UserProfile);
+            messageStore = new ValidationMessageStore(editContext);
+
+            // Subscribe to field change events to clear custom validation messages
+            editContext.OnFieldChanged += OnFieldChanged;
+
+            // Keep a copy of original values for cancel functionality
+            originalProfile = new UserResponseDto
+            {
+                Username = UserProfile.Username,
+                Fullname = UserProfile.Fullname,
+                Email = UserProfile.Email,
+                Phone = UserProfile.Phone,
+                Dob = UserProfile.Dob,
+                Gender = UserProfile.Gender,
+                Status = UserProfile.Status,
+                RoleIds = UserProfile.RoleIds,
+                CreatedAt = UserProfile.CreatedAt
+            };
+        }
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
+    {
+        if (messageStore is null) return;
+
+        // Clear custom validation messages for the changed field
+        messageStore.Clear(e.FieldIdentifier);
+
+        // Specifically clear related validation messages when these fields change
+        if (e.FieldIdentifier.FieldName == nameof(UserProfile.Email))
+        {
+            messageStore.Clear(() => UserProfile.Email);
+        }
+        else if (e.FieldIdentifier.FieldName == nameof(UserProfile.Phone))
+        {
+            messageStore.Clear(() => UserProfile.Phone);
+        }
+    }
+
+    private void OnInvalidSubmit(EditContext context)
+    {
+        Console.WriteLine("PROFILE FORM IS STILL INVALID");
+    }
+
+    private void EnableEditing()
+    {
+        isEditing = true;
+
+        // Clear any existing validation messages when starting to edit
+        if (messageStore is not null)
+        {
+            messageStore.Clear();
+            editContext?.NotifyValidationStateChanged();
+        }
+    }
+
+    private async Task CancelEditing()
+    {
+        // Restore original values
+        UserProfile.Fullname = originalProfile.Fullname;
+        UserProfile.Email = originalProfile.Email;
+        UserProfile.Phone = originalProfile.Phone;
+        UserProfile.Dob = originalProfile.Dob;
+        UserProfile.Gender = originalProfile.Gender;
+
+        // Clear validation messages
+        if (messageStore is not null)
+        {
+            messageStore.Clear();
+            editContext?.NotifyValidationStateChanged();
+        }
+
+        isEditing = false;
+        await GetProfile.InvokeAsync();
+    }
+
+    private async Task SaveProfile()
+    {
+        Console.WriteLine("Saving profile...");
+
+        if (editContext is null || messageStore is null) return;
+
+        // Clear all custom validation messages at the start
+        messageStore.Clear();
+        editContext.NotifyValidationStateChanged();
+
+        // Small delay to ensure UI updates
+        await Task.Delay(1);
+
+        // Force validation to run again
+        var isValid = editContext.Validate();
+
+        if (!isValid)
+        {
+            Console.WriteLine("Profile form validation failed - standard data annotations");
+            return;
+        }
+
+        // Check for duplicate email/phone (excluding current user)
+        try
+        {
+            var checkResponse = await Http.GetFromJsonAsync<ApiResponseDto<IsUserExistedDto>>(
+                $"api/user/is-existed?email={UserProfile.Email}&phone={UserProfile.Phone}&excludeUserId={UserProfile.Id}");
+
+            if (checkResponse?.Data is not null)
+            {
+                var checkData = checkResponse.Data;
+
+                if (checkData.EmailExists)
+                    messageStore.Add(() => UserProfile.Email, "Email đã được sử dụng bởi người dùng khác.");
+                if (checkData.PhoneExists)
+                    messageStore.Add(() => UserProfile.Phone, "Số điện thoại đã được sử dụng bởi người dùng khác.");
+
+                if (checkData.EmailExists || checkData.PhoneExists)
+                {
+                    editContext.NotifyValidationStateChanged();
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking duplicates: {ex.Message}");
+            // Continue with save if check fails
+        }
+
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var payload = new UserRequestDto
+        {
+            Username = UserProfile.Username,
+            Password = string.Empty,
+            Fullname = UserProfile.Fullname,
+            Email = UserProfile.Email,
+            Phone = UserProfile.Phone,
+            Dob = UserProfile.Dob,
+            Gender = UserProfile.Gender,
+            Status = UserProfile.Status,
+            RoleIds = UserProfile.RoleIds,
+            CreatedAt = UserProfile.CreatedAt
+        };
+
+        try
+        {
+            var response = await client.PutAsJsonAsync("api/user/profile", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Cập nhật thông tin thành công!");
+
+                // Update original profile with new values
+                originalProfile.Fullname = UserProfile.Fullname;
+                originalProfile.Email = UserProfile.Email;
+                originalProfile.Phone = UserProfile.Phone;
+                originalProfile.Dob = UserProfile.Dob;
+                originalProfile.Gender = UserProfile.Gender;
+
+                await GetProfile.InvokeAsync();
+                isEditing = false;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Update failed: {errorContent}");
+                ToastService.ShowError("Đã xảy ra lỗi khi cập nhật thông tin");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception during save: {ex.Message}");
+            ToastService.ShowError("Đã xảy ra lỗi khi cập nhật thông tin");
+        }
+    }
+
+    public void Dispose()
+    {
+        if (editContext is not null)
+        {
+            editContext.OnFieldChanged -= OnFieldChanged;
+        }
+    }
+}

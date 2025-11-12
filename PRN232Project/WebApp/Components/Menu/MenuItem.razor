@@ -1,0 +1,71 @@
+﻿@using System.Globalization
+@using DTOs
+@inject NavigationManager Navigation
+
+<div class="col-12 col-sm-6 col-md-4 col-lg-3">
+    <div class="product-card h-100 d-flex flex-column clickable" @onclick="() => GoToDetail(Product.Id)">
+        <img src="@(Product.Images.Any() ? $"images/{Product.Images.First()}" : "images/default-img.png")" alt="@Product.Name" class="product-img" />
+        <div class="product-info flex-grow-1 d-flex flex-column justify-content-between">
+            <div>
+                <h3 class="product-title">@Product.Name</h3>
+                <div class="product-category">@Product.Category?.Name</div>
+                <div class="product-price">@FormatPrice(Product.Price)</div>
+            </div>
+            <div>
+                <AddToCartButton ProductId="@Product.Id" Options="@GetQuickAddOptions(Product)" Quantity="1" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+	[Parameter] public ProductResponseDto? Product { get; set; }
+
+    private List<int> GetQuickAddOptions(ProductResponseDto product)
+    {
+        var preferredOptions = new List<int>();
+
+        var grouped = product.Options
+            .GroupBy(po => po.Name)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        if (grouped.TryGetValue("Size", out var sizeOptions))
+        {
+            var priority = new[] { "M", "L", "S" };
+            var best = sizeOptions.OrderBy(o => Array.IndexOf(priority, o.Type)).FirstOrDefault();
+            if (best != null) preferredOptions.Add(best.Id);
+        }
+
+        if (grouped.TryGetValue("Đá", out var iceOptions) && iceOptions.Count > 0)
+        {
+            var priority = new[] { "100%", "50%", "0%", "Nóng" };
+            var best = iceOptions.OrderBy(o => Array.IndexOf(priority, o.Type)).FirstOrDefault();
+            if (best != null) preferredOptions.Add(best.Id);
+        }
+        else if (grouped.TryGetValue("Nhiệt độ", out var tempOptions) && tempOptions.Count > 0)
+        {
+            var best = tempOptions.FirstOrDefault(o => o.Type == "Nóng");
+            if (best != null) preferredOptions.Add(best.Id);
+        }
+
+        if (grouped.TryGetValue("Đường", out var sugarOptions))
+        {
+            var priority = new[] { "100%", "50%", "30%" };
+            var best = sugarOptions.OrderBy(o => Array.IndexOf(priority, o.Type)).FirstOrDefault();
+            if (best != null) preferredOptions.Add(best.Id);
+        }
+
+        return preferredOptions;
+    }
+
+    private void GoToDetail(int productId)
+    {
+        Navigation.NavigateTo($"/product/{productId}");
+    }
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+}

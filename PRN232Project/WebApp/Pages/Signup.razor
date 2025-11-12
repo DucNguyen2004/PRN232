@@ -1,0 +1,249 @@
+﻿@page "/signup"
+@using Blazored.Toast.Services
+@using DTOs
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Blazored.Toast.Services.IToastService ToastService
+
+<PageTitle>Đăng ký tài khoản - Việt Coffee</PageTitle>
+
+<div class="signup-page d-flex align-items-center justify-content-center min-vh-100" style="background-color: var(--bg-light);">
+    <div class="signup-card shadow rounded bg-white w-100" style="max-width: 480px;">
+        <div class="text-center mb-4 pt-4">
+            <h3 class="fw-bold">Tạo tài khoản mới</h3>
+            <p class="text-muted">Trở thành thành viên của Việt Coffee ngay hôm nay</p>
+        </div>
+        
+        <div class="p-4 pt-0">
+            <EditForm EditContext="editContext" OnValidSubmit="HandleSignup" OnInvalidSubmit="@OnInvalidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Họ và tên</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <InputText class="form-control" @bind-Value="signupModel.Fullname" placeholder="Nhập họ và tên" />
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Tên đăng nhập</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-at"></i></span>
+                            <InputText class="form-control" @bind-Value="signupModel.Username" placeholder="Nhập tên đăng nhập" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <InputText class="form-control" @bind-Value="signupModel.Email" type="email" placeholder="example@email.com" />
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Số điện thoại</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                            <InputText class="form-control" @bind-Value="signupModel.Phone" placeholder="0xxxxxxxxx" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Giới tính</label>
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" name="gender" id="male" value="Male" 
+                                   checked="@(signupModel.Gender == "Male")" @onchange="@(() => signupModel.Gender = "Male")" />
+                            <label class="form-check-label" for="male">Nam</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" name="gender" id="female" value="Female" 
+                                   checked="@(signupModel.Gender == "Female")" @onchange="@(() => signupModel.Gender = "Female")" />
+                            <label class="form-check-label" for="female">Nữ</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" name="gender" id="other" value="Other" 
+                                   checked="@(signupModel.Gender == "Other")" @onchange="@(() => signupModel.Gender = "Other")" />
+                            <label class="form-check-label" for="other">Khác</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Mật khẩu</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <InputText class="form-control" @bind-Value="signupModel.Password" type="password" placeholder="Nhập mật khẩu" />
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nhập lại mật khẩu</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <InputText class="form-control" @bind-Value="confirmPassword" type="password" placeholder="Xác nhận mật khẩu" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <InputCheckbox class="form-check-input" id="agreeTerms" @bind-Value="agreeTerms" />
+                    <label class="form-check-label" for="agreeTerms">
+                        Tôi đồng ý với <a href="#" class="text-decoration-none">Điều khoản dịch vụ</a> và <a href="#" class="text-decoration-none">Chính sách bảo mật</a>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn btn-accent w-100 py-2 mt-3" disabled="@(!agreeTerms)">
+                    Đăng ký tài khoản
+                </button>
+                
+                <div class="text-center mt-3">
+                    <span>Bạn đã có tài khoản?</span> <a href="/login" class="text-decoration-none">Đăng nhập</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void OnInvalidSubmit(EditContext context)
+    {
+        Console.WriteLine("FORM IS STILL INVALID");
+    }
+
+    private UserRequestDto signupModel = new();
+    private EditContext? editContext;
+    private ValidationMessageStore? messageStore;
+    private string? confirmPassword;
+    private bool agreeTerms = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(signupModel);
+        messageStore = new ValidationMessageStore(editContext);
+
+        editContext.OnFieldChanged += OnFieldChanged;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e)
+    {
+        if (messageStore is null) return;
+
+        // Clear custom validation messages for the changed field
+        messageStore.Clear(e.FieldIdentifier);
+
+        // Specifically clear related validation messages when these fields change
+        if (e.FieldIdentifier.FieldName == nameof(signupModel.Email))
+        {
+            messageStore.Clear(() => signupModel.Email);
+        }
+        else if (e.FieldIdentifier.FieldName == nameof(signupModel.Phone))
+        {
+            messageStore.Clear(() => signupModel.Phone);
+        }
+        else if (e.FieldIdentifier.FieldName == nameof(signupModel.Username))
+        {
+            messageStore.Clear(() => signupModel.Username);
+        }
+        else if (e.FieldIdentifier.FieldName == nameof(confirmPassword))
+        {
+            messageStore.Clear(() => signupModel.Password);
+        }
+    }
+
+    private async Task HandleSignup()
+    {
+        Console.WriteLine("Here");
+        if (editContext is null || messageStore is null) return;
+        messageStore.Clear();
+
+        // Force validation to run again
+        var isValid = editContext.Validate();
+        if (!isValid)
+        {
+            Console.WriteLine("Form validation failed");
+            return;
+        }
+
+        if (signupModel.Password != confirmPassword)
+        {
+            messageStore.Add(() => signupModel.Password, "Mật khẩu xác nhận không khớp.");
+            editContext.NotifyValidationStateChanged();
+            return;
+        }
+
+        var checkResponse = await Http.GetFromJsonAsync<ApiResponseDto<IsUserExistedDto>>(
+            $"api/user/is-existed?email={signupModel.Email}&phone={signupModel.Phone}&username={signupModel.Username}");
+
+        if (checkResponse?.Data is not null)
+        {
+            Console.WriteLine("There");
+
+            var checkData = checkResponse?.Data;
+
+            if (checkData.UserNameExists)
+				messageStore.Add(() => signupModel.Username, "Tên đăng nhập đã được sử dụng.");
+
+            if (checkData.EmailExists)
+                messageStore.Add(() => signupModel.Email, "Email đã được sử dụng.");
+
+            if (checkData.PhoneExists)
+                messageStore.Add(() => signupModel.Phone, "Số điện thoại đã được sử dụng.");
+
+            if (checkData.EmailExists || checkData.PhoneExists || checkData.UserNameExists)
+            {
+                editContext.NotifyValidationStateChanged();
+                return;
+            }
+        }
+
+        signupModel.CreatedAt = DateTime.Now;
+		signupModel.Dob = new DateTime(1000, 1, 1); // Default date of birth
+        signupModel.Status = "ACTIVE";
+        signupModel.RoleIds = new List<int> { 2 }; 
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/User", signupModel);
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Đăng ký thành công!");
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                var message = await response.Content.ReadAsStringAsync();
+                ToastService.ShowError($"Đăng ký thất bại!");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Đã xảy ra lỗi trong quá trình đăng ký");
+        }
+    }
+
+    public void Dispose()
+    {
+        if (editContext is not null)
+        {
+            editContext.OnFieldChanged -= OnFieldChanged;
+        }
+    }
+}

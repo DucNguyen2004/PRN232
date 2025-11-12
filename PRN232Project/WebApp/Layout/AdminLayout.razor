@@ -1,0 +1,68 @@
+﻿@using Blazored.LocalStorage
+@using Blazored.Toast
+@using Blazored.Toast.Configuration
+@using FE_PRN232Project.Services
+
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@inject ILocalStorageService LocalStorage
+
+<div class="d-flex vh-100">
+    <!-- Sidebar -->
+    <div class="border-end" style="width: 220px; background-color: #195a3c;">
+        <div class="p-3">
+            <h5 class="mb-4">Admin Panel</h5>
+            <ul class="nav flex-column gap-2">
+                <li class="nav-item">
+                    <NavLink href="/admin/products" class="nav-link" activeClass="active">
+                        <i class="bi bi-box-seam me-2"></i> Sản phẩm
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink href="/admin/orders" class="nav-link" activeClass="active">
+                        <i class="bi bi-receipt me-2"></i> Đơn hàng
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink href="/admin/accounts" class="nav-link" activeClass="active">
+                        <i class="bi bi-people me-2"></i> Tài khoản
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink href="/admin/coupons" class="nav-link" activeClass="active">
+                        <i class="bi bi-people me-2"></i> Mã giảm giá
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-grow-1 d-flex flex-column">
+        <!-- Top bar -->
+        <div class="d-flex justify-content-end align-items-center bg-white shadow-sm px-4 py-2">
+            <button class="btn btn-outline-danger btn-sm" @onclick="HandleLogout" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- Page Content -->
+        <div class="p-4 flex-grow-1 overflow-auto bg-light">
+            @Body
+        </div>
+    </div>
+</div>
+
+<BlazoredToasts Position="ToastPosition.BottomRight"
+                Timeout="3"
+                ShowProgressBar="true"
+                PauseProgressOnHover="true" />
+
+@code {
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

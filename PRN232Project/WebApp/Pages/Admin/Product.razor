@@ -1,0 +1,362 @@
+﻿@page "/admin/products"
+@using DTOs
+@using FE_PRN232Project.Components.Admin
+@using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
+@using System.Globalization
+@using Blazored.Toast.Services
+@using Blazored.LocalStorage;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager Navigation
+@inject Blazored.Toast.Services.IToastService ToastService
+@* @attribute [Authorize(Roles = "admin")] *@
+@layout AdminLayout
+@inject HttpClient Http
+
+<div class="page-wrapper">
+    <h2 class="admin-section-title mb-4">Quản lý sản phẩm</h2>
+
+    <div class="filter-bar mb-4">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Tìm theo tên sản phẩm..."
+                           @bind="searchTerm" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="selectedStatus">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="ACTIVE">Kích hoạt</option>
+                    <option value="INACTIVE">Chưa kích hoạt</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="selectedCategoryId">
+                    <option value="">Tất cả danh mục</option>
+                    @foreach (var cat in Categories)
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex">
+                    <select class="form-select" @bind="sortField">
+                        <option value="Name">Sắp xếp theo tên</option>
+                        <option value="Price">Sắp xếp theo giá</option>
+                        <option value="CreatedAt">Sắp xếp theo ngày tạo</option>
+                        @* <option value="Sold">Sắp xếp theo số lượng đã bán</option> *@
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button class="btn @(sortDirection == "asc" ? "btn-primary" : "btn-outline-primary") w-100"
+                        @onclick="ToggleSortDirection">
+                    <i class="bi @(sortDirection == "asc" ? "bi-sort-up" : "bi-sort-down")"></i>
+                    @(sortDirection == "asc" ? "Tăng dần" : "Giảm dần")
+                </button>
+            </div>
+            <div class="col-md-12">
+                <button class="btn btn-primary" @onclick="ApplyFilters">
+                    <i class="bi bi-funnel-fill me-1"></i> Lọc
+                </button>
+                <button class="btn btn-outline-secondary ms-2" @onclick="ResetFilters">
+                    <i class="bi bi-x-circle me-1"></i> Đặt lại
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between mb-3">
+        <button class="btn btn-primary" @onclick="OpenCreateModal">
+            <i class="bi bi-plus-lg"></i> Thêm sản phẩm
+        </button>
+
+        @* <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" @bind="sortField">
+                <option value="Name">Sort by Name</option>
+                <option value="Price">Sort by Price</option>
+                <option value="CreateAt">Sort by Date</option>
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleSortDirection">
+                <i class="bi @(sortDirection == "asc" ? "bi-arrow-down" : "bi-arrow-up")"></i>
+            </button>
+        </div> *@
+    </div>
+
+    <!-- Products Table -->
+    <div class="table-wrapper mb-4">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th class="sticky-col left">Ảnh</th>
+                    <th>Tên</th>
+                    <th>Danh mục</th>
+                    <th>Đơn giá gốc</th>
+                    <th>Ngày tạo</th>
+                    @* <th>Sold</th> *@
+                    <th>Trạng thái</th>
+                    <th class="sticky-col right"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (loading)
+                {
+                    <tr><td colspan="8" class="text-center">Loading...</td></tr>
+                }
+                else if (PagedProducts.Items == null || !PagedProducts.Items.Any())
+                {
+                    <tr><td colspan="8" class="text-center">No products found.</td></tr>
+                }
+                else
+                {
+                    foreach (var p in PagedProducts.Items)
+                    {
+                        <tr>
+                            <td class="sticky-col left">
+                                <img src="@(p.Images.Any() ? $"images/{p.Images.First()}" : "images/default-img.png")" style="width:50px;height:50px;object-fit:cover;border-radius:6px;" />
+                            </td>
+                            <td>@p.Name</td>
+                            <td>@p.Category?.Name</td>
+                            <td>@FormatPrice(p.Price)</td>
+                            <td>@p.CreateAt.ToString("dd-MM-yyyy")</td>
+                            @* <td>@p.Sold</td> *@
+                            <td><span class="badge @GetStatusBadgeClass(p.Status)">@p.Status</span></td>
+                            <td class="sticky-col right">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" @onclick="() => OpenEditModal(p)"><i class="bi bi-pencil"></i></button>
+                                    @* <button class="btn btn-sm btn-danger" @onclick="() => DeleteProduct(p.Id)"><i class="bi bi-trash"></i></button> *@
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <nav>
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" @onclick="() => GoToPage(CurrentPage - 1)">&laquo;</a>
+            </li>
+            @for (int i = 1; i <= PagedProducts.TotalPages; i++)
+            {
+                var pageNumber = i;
+                <li class="page-item @(CurrentPage == pageNumber ? "active" : "")">
+                    <a class="page-link" @onclick="() => GoToPage(pageNumber)">@pageNumber</a>
+                </li>
+            }
+            <li class="page-item @(CurrentPage == PagedProducts.TotalPages ? "disabled" : "")">
+                <a class="page-link" @onclick="() => GoToPage(CurrentPage + 1)">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+<ProductModal @bind-IsModalOpen="IsModalVisible"
+              EditProduct="EditingProduct"
+              EditingProductId="EditingProductId"
+              EditingProductIdChanged="@((int id) => EditingProductId = id)"
+              IsEditMode="IsEditMode"
+              Categories="Categories"
+              OnSubmit="SaveProduct" />
+
+@code {
+    private List<CategoryResponseDto> Categories = new();
+    private List<ProductResponseDto> AllProducts = new();
+    private PaginationResponseDto<ProductResponseDto> PagedProducts = new();
+
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+    private string searchTerm = "";
+    private string selectedStatus = "";
+    private int? selectedCategoryId;
+    private string sortField = "Name";
+    private string sortDirection = "asc";
+    private bool loading = true;
+
+    private bool IsModalVisible = false;
+    private bool IsEditMode = false;
+    private ProductRequestDto EditingProduct = new();
+    private int EditingProductId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var role = await localStorage.GetItemAsync<string>("userRole");
+        if (role != "admin")
+        {
+            Navigation.NavigateTo("/");
+        }
+
+        loading = true;
+        await LoadData();
+        loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        var productRes = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
+        var categoryRes = await Http.GetFromJsonAsync<ApiResponseDto<List<CategoryResponseDto>>>("api/category");
+        AllProducts = productRes?.Data ?? new();
+        Categories = categoryRes?.Data ?? new();
+        HandleFilters();
+    }
+
+    private void HandleFilters()
+    {
+        IEnumerable<ProductResponseDto> filtered = AllProducts;
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var lower = searchTerm.ToLower();
+            filtered = filtered.Where(p => p.Name.ToLower().Contains(lower));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedStatus))
+        {
+            filtered = filtered.Where(p => p.Status.Equals(selectedStatus, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (selectedCategoryId.HasValue)
+        {
+            filtered = filtered.Where(p => p.Category?.Id == selectedCategoryId);
+        }
+
+        filtered = sortField switch
+        {
+            "Price" => sortDirection == "asc" ? filtered.OrderBy(p => p.Price) : filtered.OrderByDescending(p => p.Price),
+            "CreatedAt" => sortDirection == "asc" ? filtered.OrderBy(p => p.CreateAt) : filtered.OrderByDescending(p => p.CreateAt),
+            "Sold" => sortDirection == "asc" ? filtered.OrderBy(p => p.Sold) : filtered.OrderByDescending(p => p.Sold),
+            _ => sortDirection == "asc" ? filtered.OrderBy(p => p.Name) : filtered.OrderByDescending(p => p.Name),
+        };
+
+        var totalItems = filtered.Count();
+        var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+
+        var items = filtered.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+
+        PagedProducts = new PaginationResponseDto<ProductResponseDto>
+        {
+            Items = items,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+    }
+
+    private async Task ApplyFilters()
+    {
+        CurrentPage = 1;
+        HandleFilters();
+        await Task.CompletedTask;
+    }
+
+    private void ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedStatus = string.Empty;
+        sortField = "Name";
+        sortDirection = "asc";
+        CurrentPage = 1;
+
+        HandleFilters();
+    }
+
+    private void ToggleSortDirection() => sortDirection = sortDirection == "asc" ? "desc" : "asc";
+
+    private async Task GoToPage(int page)
+    {
+        if (page >= 1 && page <= PagedProducts.TotalPages)
+        {
+            CurrentPage = page;
+            HandleFilters();
+            await Task.CompletedTask;
+        }
+    }
+
+    private string GetStatusBadgeClass(string status) => status.ToUpper() switch
+    {
+        "ACTIVE" => "bg-success",
+        "INACTIVE" => "bg-warning",
+        "DELETED" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private void OpenCreateModal()
+    {
+        EditingProduct = new ProductRequestDto
+        {
+            CategoryId = 0,
+            CreateAt = DateTime.Now,
+            Status = "INACTIVE",
+            Options = new List<ProductOptionRequestDto>()
+        };
+		EditingProductId = 0;
+        IsEditMode = false;
+        IsModalVisible = true;
+    }
+
+    private void OpenEditModal(ProductResponseDto product)
+    {
+        EditingProduct = new ProductRequestDto
+        {
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            CategoryId = product.Category?.Id ?? 0,
+            CreateAt = product.CreateAt,
+            Status = product.Status,
+            Images = product.Images?.ToList() ?? new(),
+            Options = product.Options?.Select(
+                o => new ProductOptionRequestDto { 
+                    OptionValueId = o.Id, 
+                    DeltaPrice = o.DeltaPrice 
+                }).ToList() ?? new()
+        };
+
+        var json = JsonSerializer.Serialize(EditingProduct);
+        Console.WriteLine($"ProductRequestDto: {json}");
+
+        EditingProductId = product.Id;
+        IsEditMode = true;
+        IsModalVisible = true;
+    }
+
+    private async Task SaveProduct(ProductRequestDto dto)
+    {
+        // var json = JsonSerializer.Serialize(dto);
+        // Console.WriteLine($"ProductRequestDto: {json}");
+
+        HttpResponseMessage? response = null;
+        if (EditingProductId > 0)
+        {
+            response = await Http.PutAsJsonAsync($"api/product/{EditingProductId}", dto);
+        }
+        else
+        {
+            response = await Http.PostAsJsonAsync($"api/product", dto);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            ToastService.ShowSuccess("Cập nhật sản phẩm thành công!");
+			EditingProduct = new ProductRequestDto();
+			EditingProductId = 0;
+            await LoadData();
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            ToastService.ShowError($"Cập nhật sản phẩm thất bại");
+        }
+    }
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+}

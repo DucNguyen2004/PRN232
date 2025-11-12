@@ -1,0 +1,177 @@
+﻿@using Blazored.LocalStorage
+@using Blazored.Toast
+@using Blazored.Toast.Configuration
+@using FE_PRN232Project.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@inject ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
+
+<div class="page">
+    <main class="bg">
+        <div class="top-nav d-flex align-items-center justify-content-between">
+            <div class="logo">
+                <a href="/" class="text-decoration-none">
+                    <h3 class="mb-0 text-white"><span class="accent-text-color">Việt</span> Coffee</h3>
+                </a>
+            </div>
+
+            <div class="hamburger d-md-none" @onclick="ToggleMobileMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <div class="nav-center d-none d-md-block">
+                <div class="d-flex justify-content-center gap-4">
+                    <NavLink href="/" class="nav-link text-white" Match="NavLinkMatch.All">Trang chủ</NavLink>
+                    <NavLink href="/menu" class="nav-link text-white">Thực đơn</NavLink>
+                    <NavLink href="/about" class="nav-link text-white">Giới thiệu</NavLink>
+                </div>
+            </div>
+
+            <div class="auth-buttons d-flex align-items-center gap-2">
+                <a href="/admin" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                   style="width: 36px; height: 36px;" title="Quản trị">
+                    <i class="bi bi-gear-fill"></i>
+                </a>
+                <a href="/profile" class="btn btn-outline-light btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                   style="width: 36px; height: 36px;" title="Trang cá nhân">
+                    <i class="bi bi-person-circle"></i>
+                </a>
+                <a href="/cart" class="btn btn-outline-light btn-sm position-relative" title="Giỏ hàng">
+                    <i class="bi bi-cart"></i>
+                    @if (cartItemCount > 0)
+                    {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            @cartItemCount
+                        </span>
+                    }
+                </a>
+                <AuthorizeView>
+                    <Authorized>
+                        <button class="btn btn-outline-light btn-sm" @onclick="HandleLogout" title="Đăng xuất">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/login" class="btn btn-outline-light btn-sm" title="Đăng nhập">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+                        </a>
+                        <a href="/signup" class="btn btn-accent btn-sm" title="Đăng ký">
+                            Đăng ký
+                        </a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="mobile-nav d-md-none">
+            <div class="d-flex flex-column">
+                <NavLink href="/" class="nav-link text-white py-3 border-bottom border-light-subtle" Match="NavLinkMatch.All">Trang chủ</NavLink>
+                <NavLink href="/menu" class="nav-link text-white py-3 border-bottom border-light-subtle">Thực đơn</NavLink>
+                <NavLink href="/about" class="nav-link text-white py-3 border-bottom border-light-subtle">Giới thiệu</NavLink>
+            </div>
+        </div>
+
+        <div class="content">
+            @Body
+        </div>
+
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-container">
+                    <div>
+                        <div class="footer-logo">
+                            <span class="accent-text-color">Việt</span> Coffee
+                        </div>
+                        <p class="footer-about">
+                            Chúng tôi mang đến trải nghiệm cà phê Việt Nam chính gốc với hương vị đậm đà, phong phú và độc đáo.
+                        </p>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-tiktok"></i></a>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="footer-heading">Liên kết</h4>
+                        <ul class="footer-links">
+                            <li><a href="/">Trang chủ</a></li>
+                            <li><a href="/menu">Thực đơn</a></li>
+                            <li><a href="/about">Giới thiệu</a></li>
+                            <li><a href="/contact">Liên hệ</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="footer-heading">Dịch vụ</h4>
+                        <ul class="footer-links">
+                            <li><a href="/delivery">Giao hàng</a></li>
+                            <li><a href="/order-tracking">Theo dõi đơn hàng</a></li>
+                            <li><a href="/faq">Câu hỏi thường gặp</a></li>
+                            <li><a href="/terms">Điều khoản sử dụng</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="footer-heading">Liên hệ</h4>
+                        <ul class="footer-links">
+                            <li><i class="fas fa-map-marker-alt me-2"></i> 123 Đường Cà Phê, TP. Hồ Chí Minh</li>
+                            <li><i class="fas fa-phone me-2"></i> +84 123 456 789</li>
+                            <li><i class="fas fa-envelope me-2"></i> info@vietcoffee.com</li>
+                            <li><i class="fas fa-clock me-2"></i> 7:00 - 22:00, Thứ 2 - Chủ nhật</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="copyright">
+                    &copy; @DateTime.Now.Year Việt Coffee. Tất cả quyền được bảo lưu.
+                </div>
+            </div>
+        </footer>
+    </main>
+</div>
+
+<BlazoredToasts Position="ToastPosition.BottomRight"
+                Timeout="3"
+                ShowProgressBar="true"
+                PauseProgressOnHover="true" />
+
+@code {
+    private int cartItemCount = 0;
+    private DotNetObjectReference<MainLayout> objRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        objRef = DotNetObjectReference.Create(this);
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initAOS");
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    private async Task ToggleMobileMenu()
+    {
+        await JSRuntime.InvokeVoidAsync("toggleMobileMenu");
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

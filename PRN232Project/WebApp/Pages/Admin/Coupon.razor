@@ -1,0 +1,310 @@
+﻿@page "/admin/coupons"
+@using DTOs
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@using Blazored.Toast.Services
+@using FE_PRN232Project.Components.Admin
+@using System.Text.Json
+@inject IToastService ToastService
+@layout AdminLayout
+
+<div class="page-wrapper">
+    <div class="container">
+        <h3 class="text-center mb-4">Quản lý mã khuyến mãi</h3>
+
+        <div class="filter-bar mb-4">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" placeholder="Tìm theo tên hoặc mã..." @bind="searchTerm" />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="selectedStatus">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="ACTIVE">Kích hoạt</option>
+                        <option value="INACTIVE">Chưa kích hoạt</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="sortField">
+                        <option value="Code">Mã</option>
+                        <option value="Name">Tên</option>
+                        <option value="DateCreated">Ngày tạo</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <button class="btn btn-primary" @onclick="ApplyFilters">
+                        <i class="bi bi-funnel-fill me-1"></i> Lọc
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" @onclick="ResetFilters">
+                        <i class="bi bi-x-circle me-1"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-3">
+            <button class="btn btn-primary" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg"></i> Thêm mã giảm giá
+            </button>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th class="sticky-col left">Mã</th>
+                        <th>Tên</th>
+                        <th>Trạng thái</th>
+                        <th>Loại giảm</th>
+                        <th>Giá trị</th>
+                        <th>Hiệu lực</th>
+                        <th>Đã dùng</th>
+                        <th class="sticky-col right action-buttons"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (PagedCoupons.Items.Count() == 0)
+                    {
+                        <tr><td colspan="8" class="text-center">Không có mã khuyến mãi nào.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in PagedCoupons.Items)
+                        {
+                            <tr>
+                                <td class="sticky-col left">@c.Code</td>
+                                <td>@c.Name</td>
+                                <td><span class="badge @GetStatusBadge(c.Status)">@GetStatusText(c.Status)</span></td>
+                                <td>@c.ValueType</td>
+                                <td>@c.Value</td>
+                                <td>@(c.DateValid?.ToString("dd/MM/yyyy") ?? "-") - @(c.DateExpired?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                <td>@c.UsageUsers.Count() / @c.MaxUsages</td>
+                                <td class="sticky-col right action-buttons">
+                                    @if (c.Status != "ACTIVE")
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => OpenEdit(c)"><i class="bi bi-pencil"></i></button>
+                                    }
+
+                                    @if (c.Status == "ACTIVE")
+                                    {
+                                        <button class="btn btn-sm btn-danger" @onclick="() => ToggleStatus(c, false)"><i class="bi bi-trash"></i></button>
+                                    }
+                                    else if (c.Status == "INACTIVE")
+                                    {
+                                        <button class="btn btn-sm btn-success" @onclick="() => ToggleStatus(c, true)"><i class="bi bi-check-circle"></i></button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+
+        @if (PagedCoupons.TotalPages > 1)
+        {
+            <nav>
+                <ul class="pagination">
+                    @for (int i = 1; i <= PagedCoupons.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == CurrentPage ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPage(i)">@i</button>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+<CouponModal Title="@modalTitle"
+             IsVisible="@isModalOpen"
+             Model="@currentCoupon"
+             OnSubmit="@SaveCoupon"
+             IsVisibleChanged="@(v => isModalOpen = v)" />
+
+@code {
+    private List<CouponResponseDto> AllCoupons = new();
+    private PaginationResponseDto<CouponResponseDto> PagedCoupons = new();
+
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+
+    private string searchTerm = string.Empty;
+    private string selectedStatus = string.Empty;
+    private string sortField = "DateCreated";
+
+    private bool isModalOpen = false;
+    private string modalTitle = "";
+    private CouponRequestDto currentCoupon = new();
+    private int currentCouponId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var response = await Http.GetFromJsonAsync<ApiResponseDto<List<CouponResponseDto>>>($"api/coupon");
+        if (response?.Data != null)
+        {
+            AllCoupons = response.Data;
+            ApplyFilters();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<CouponResponseDto> filtered = AllCoupons;
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var lower = searchTerm.ToLower();
+            filtered = filtered.Where(c => c.Name.ToLower().Contains(lower) || c.Code.ToLower().Contains(lower));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedStatus))
+        {
+            filtered = filtered.Where(c => c.Status == selectedStatus);
+        }
+
+        filtered = sortField switch
+        {
+            "Code" => filtered.OrderBy(c => c.Code),
+            "Name" => filtered.OrderBy(c => c.Name),
+            "DateCreated" => filtered.OrderByDescending(c => c.DateCreated),
+            _ => filtered
+        };
+
+        var totalItems = filtered.Count();
+        var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+
+        PagedCoupons = new PaginationResponseDto<CouponResponseDto>
+        {
+            Items = filtered.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList(),
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+    }
+
+    private async Task ResetFilters()
+    {
+
+    }
+
+    private async Task ToggleStatus(CouponResponseDto dto, bool activate)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Bạn có chắc chắn muốn {(activate ? "kích hoạt" : "vô hiệu hóa")} mã giảm giá này không?");
+        if (!confirmed) return;
+
+        currentCoupon = new CouponRequestDto
+        {
+            Code = dto.Code,
+            Name = dto.Name,
+            Description = dto.Description,
+            Status = activate ? "ACTIVE" : "INACTIVE",
+            DateCreated = dto.DateCreated,
+            DateValid = dto.DateValid,
+            DateExpired = dto.DateExpired,
+            Value = dto.Value,
+            ValueType = dto.ValueType,
+            MinOrderValue = dto.MinOrderValue,
+            ProductId = dto.Product?.Id,
+            CategoryId = dto.Category?.Id
+        };
+		currentCouponId = dto.Id;
+		await SaveCoupon();
+    }
+
+    private void OpenCreate()
+    {
+        currentCoupon = new CouponRequestDto
+        {
+            Status = "ACTIVE",
+            ValueType = "FIXED",
+            MinOrderValue = 0,
+            MaxUsages = 1,
+            DateValid = DateTime.Now,
+            DateExpired = DateTime.Now.AddDays(7),
+            DateCreated = DateTime.Now
+        };
+		currentCouponId = 0;
+        modalTitle = "Tạo mới Coupon";
+        isModalOpen = true;
+    }
+
+    private void OpenEdit(CouponResponseDto existing)
+    {
+        currentCoupon = new CouponRequestDto
+        {
+            Code = existing.Code,
+            Name = existing.Name,
+            Description = existing.Description,
+            Status = existing.Status,
+            DateCreated = existing.DateCreated,
+            DateValid = existing.DateValid,
+            DateExpired = existing.DateExpired,
+            Value = existing.Value,
+            ValueType = existing.ValueType,
+            MinOrderValue = existing.MinOrderValue,
+            ProductId = existing.Product?.Id,
+            CategoryId = existing.Category?.Id,
+            MaxUsages = existing.MaxUsages
+        };
+		currentCouponId = existing.Id;
+        modalTitle = "Chỉnh sửa Coupon";
+        isModalOpen = true;
+    }
+
+    private async Task SaveCoupon()
+    {
+        // var json = JsonSerializer.Serialize(currentCoupon);
+        // Console.WriteLine($"currentCoupon: {json}");
+
+        HttpResponseMessage? response = null;
+        if (currentCouponId > 0)
+        {
+            response = await Http.PutAsJsonAsync($"api/coupon/{currentCouponId}", currentCoupon);
+        }
+        else
+        {
+            response = await Http.PostAsJsonAsync($"api/coupon", currentCoupon);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            ToastService.ShowSuccess("Cập nhật mã giảm giá thành công!");
+			currentCoupon = new CouponRequestDto();
+			currentCouponId = 0;
+            await LoadData();
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            ToastService.ShowError($"Cập nhật mã giảm giá thất bại");
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        CurrentPage = page;
+        ApplyFilters();
+    }
+
+    private string GetStatusBadge(string status) => status switch
+    {
+        "ACTIVE" => "bg-success",
+        "INACTIVE" => "bg-secondary",
+        _ => "bg-light"
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "ACTIVE" => "Kích hoạt",
+        "INACTIVE" => "Ngừng",
+        _ => status
+    };
+}

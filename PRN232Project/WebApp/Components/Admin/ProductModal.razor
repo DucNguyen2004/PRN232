@@ -1,0 +1,270 @@
+﻿@using DTOs
+<EditForm Model="EditProduct" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <Modal @bind-IsVisible="IsModalOpen" Title="@(IsEditMode ? "Edit Product" : "Create Product")">
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="EditProduct.Name" />
+            <ValidationMessage For="@(() => EditProduct.Name)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select class="form-select" @bind="EditProduct.CategoryId">
+                <option value="">-- Select Category --</option>
+                @foreach (var c in Categories)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+            <ValidationMessage For="@(() => EditProduct.CategoryId)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea class="form-control" @bind-Value="EditProduct.Description" rows="3" />
+            <ValidationMessage For="@(() => EditProduct.Description)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Price</label>
+            <InputNumber class="form-control" @bind-Value="EditProduct.Price" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" @bind="EditProduct.Status">
+                <option value="ACTIVE">Kích hoạt</option>
+                <option value="INACTIVE">Chưa kích hoạt</option>
+            </select>
+        </div>
+
+        @* <div class="mb-3">
+            <label class="form-label">Image</label>
+            <InputFile class="form-control" OnChange="HandleImageUpload" accept="image/*" />
+            @if (!string.IsNullOrEmpty(CurrentImagePath))
+            {
+                <div class="mt-2">
+                    <img src="@($"images/{CurrentImagePath}")" style="width: 100px; height: 100px; object-fit: cover;" />
+                    <button type="button" class="btn btn-sm btn-danger ms-2" @onclick="RemoveImage">Remove</button>
+                </div>
+            }
+        </div> *@
+
+        <div class="mb-3">
+            <label class="form-label">Options</label>
+
+            @foreach (var group in AllOptionValues.GroupBy(o => o.Type))
+            {
+                <div class="mb-2">
+                    <strong>@group.Key</strong>
+                    <div class="row">
+                        @foreach (var opt in group)
+                        {
+                            var existing = SelectedOptions.FirstOrDefault(s => s.Id == opt.Id);
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                        <input type="checkbox" class="form-check-input"
+                                               checked="@((existing != null))"
+                                               @onchange="e => ToggleOption(opt, (bool)e.Value)" />
+                                        <label class="form-check-label mb-0">@opt.Value</label>
+                                    </div>
+
+                                    @if (existing != null)
+                                    {
+                                        <input type="number" class="form-control form-control-sm"
+                                               placeholder="+₫"
+                                               style="width: 80px;"
+                                               @bind="existing.DeltaPrice" />
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-secondary me-2" @onclick="CloseModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i> Save
+            </button>
+        </div>
+    </Modal>
+</EditForm>
+
+@code {
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public bool IsModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsModalOpenChanged { get; set; }
+    [Parameter] public ProductRequestDto EditProduct { get; set; } = new();
+    [Parameter] public int EditingProductId { get; set; }
+    [Parameter] public EventCallback<int> EditingProductIdChanged { get; set; }
+    [Parameter] public List<CategoryResponseDto> Categories { get; set; } = new();
+    [Parameter] public EventCallback<ProductRequestDto> OnSubmit { get; set; }
+    // private string CurrentImagePath = string.Empty;
+
+    private List<OptionValueDto> AllOptionValues = new()
+    {
+        new() { Id = 1, Type = "Size", Value = "S" },
+        new() { Id = 2, Type = "Size", Value = "M" },
+        new() { Id = 3, Type = "Size", Value = "L" },
+        new() { Id = 4, Type = "Ice", Value = "100%" },
+        new() { Id = 5, Type = "Ice", Value = "50%" },
+        new() { Id = 6, Type = "Ice", Value = "0%" },
+        new() { Id = 7, Type = "Sugar", Value = "100%" },
+        new() { Id = 8, Type = "Sugar", Value = "50%" },
+        new() { Id = 9, Type = "Sugar", Value = "30%" },
+        new() { Id = 10, Type = "Temperature", Value = "Hot" },
+    };
+    private List<SelectableOption> SelectedOptions = new();
+
+    private string ImageUrl = string.Empty;
+    private string NewOption = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        InitializeSelectedOptions();
+    }
+
+    protected override void OnParametersSet()
+    {
+        InitializeSelectedOptions();
+    }
+
+    private void InitializeSelectedOptions()
+    {
+        SelectedOptions.Clear();
+        // CurrentImagePath = EditProduct.Images?.FirstOrDefault() is string img ? $"images/{img}" : string.Empty;
+
+        if (EditProduct?.Options != null && EditProduct.Options.Any())
+        {
+            // import already has options
+            foreach (var option in EditProduct.Options)
+            {
+                var optionValue = AllOptionValues.FirstOrDefault(o => o.Id == option.OptionValueId);
+                if (optionValue != null)
+                {
+                    var existingSelected = SelectedOptions.FirstOrDefault(s => s.Id == optionValue.Id);
+                    if (existingSelected == null)
+                    {
+                        SelectedOptions.Add(new SelectableOption
+                        {
+                            Id = optionValue.Id,
+                            Type = optionValue.Type,
+                            Value = optionValue.Value,
+                            DeltaPrice = option.DeltaPrice
+                        });
+                    }
+                }
+            }
+        }
+        else if (!IsEditMode)
+        {
+            // auto-select default options
+            var defaultOptionIds = new List<int> { 2, 4, 5, 6, 10 };
+
+            foreach (var optionId in defaultOptionIds)
+            {
+                var optionValue = AllOptionValues.FirstOrDefault(o => o.Id == optionId);
+                if (optionValue != null)
+                {
+                    SelectedOptions.Add(new SelectableOption
+                    {
+                        Id = optionValue.Id,
+                        Type = optionValue.Type,
+                        Value = optionValue.Value,
+                        DeltaPrice = 0
+                    });
+                }
+            }
+        }
+    }
+
+    // private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    // {
+    //     var file = e.File;
+    //     if (file != null)
+    //     {
+    //         Generate unique filename
+    //         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+    //         var filePath = Path.Combine("wwwroot", "images", fileName);
+
+    //         Ensure directory exists
+    //         Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
+    //         Save file
+    //         await using var stream = new FileStream(filePath, FileMode.Create);
+    //         await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream); 5MB limit
+
+    //         Update paths
+    //         CurrentImagePath = $"{fileName}";
+    //         EditProduct.Images = new List<string> { CurrentImagePath };
+    //     }
+    // }
+
+    // private void RemoveImage()
+    // {
+    //     CurrentImagePath = string.Empty;
+    //     EditProduct.Images.Clear();
+    // }
+
+    private void ToggleOption(OptionValueDto opt, bool selected)
+    {
+        var existing = SelectedOptions.FirstOrDefault(o => o.Id == opt.Id);
+
+        if (selected && existing == null)
+        {
+            SelectedOptions.Add(new SelectableOption
+            {
+                Id = opt.Id,
+                Type = opt.Type,
+                Value = opt.Value,
+                DeltaPrice = 0
+            });
+        }
+        else if (!selected && existing != null)
+        {
+            SelectedOptions.Remove(existing);
+        }
+    }
+
+    private void RemoveOption(ProductOptionRequestDto opt) => EditProduct.Options.Remove(opt);
+
+    private async Task HandleSubmit()
+    {
+        EditProduct.Options = SelectedOptions.Select(o => new ProductOptionRequestDto
+        {
+            OptionValueId = o.Id,
+            DeltaPrice = o.DeltaPrice
+        }).ToList();
+
+        await OnSubmit.InvokeAsync(EditProduct);
+        await CloseModal();
+    }
+
+    private async Task CloseModal()
+    {
+        await EditingProductIdChanged.InvokeAsync(0);
+        await IsModalOpenChanged.InvokeAsync(false);
+    }
+
+    public class SelectableOption
+    {
+		public int Id { get; set; } = 0; 
+        public string Type { get; set; } = "";
+        public string Value { get; set; } = "";
+        public int DeltaPrice { get; set; } = 0;
+    }
+
+    public class OptionValueDto
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

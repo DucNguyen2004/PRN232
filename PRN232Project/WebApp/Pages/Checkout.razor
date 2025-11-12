@@ -1,0 +1,330 @@
+﻿@page "/checkout"
+@using DTOs
+@using System.Globalization
+@using FE_PRN232Project.States
+@using Blazored.Toast.Services
+@inject Blazored.Toast.Services.IToastService ToastService
+@inject NavigationManager Navigation
+@inject CheckoutState CheckoutState
+@inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Thanh toán - Việt Coffee</PageTitle>
+
+<div class="container py-5">
+    <h3 class="mb-4">Thanh toán</h3>
+    
+    <div class="row">
+        <div class="col-lg-7 mb-4 mb-lg-0">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">Thông tin giao hàng</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="checkoutModel" OnValidSubmit="PlaceOrder">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên</label>
+                            <InputText class="form-control" @bind-Value="userInfo.Fullname" placeholder="Nhập họ và tên người nhận" disabled />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Số điện thoại</label>
+                            <InputText class="form-control" @bind-Value="userInfo.Phone" placeholder="Nhập số điện thoại liên hệ" disabled />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Địa chỉ giao hàng</label>
+                            <InputTextArea class="form-control" @bind-Value="checkoutModel.ShippingAddress" rows="3" placeholder="Nhập địa chỉ giao hàng chi tiết" />
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Ghi chú (tùy chọn)</label>
+                            <InputTextArea class="form-control" @bind-Value="checkoutModel.Message" rows="2" placeholder="Ghi chú về đơn hàng, ví dụ: thời gian giao hàng hoặc địa điểm giao hàng chi tiết" />
+                        </div>
+                        
+                        @* <div class="mb-3">
+                            <label class="form-label">Phương thức thanh toán</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="cod" checked />
+                                <label class="form-check-label" for="cod">
+                                    <i class="bi bi-cash me-2"></i> Thanh toán khi nhận hàng (COD)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="banking" disabled />
+                                <label class="form-check-label text-muted" for="banking">
+                                    <i class="bi bi-credit-card me-2"></i> Chuyển khoản ngân hàng (Đang phát triển)
+                                </label>
+                            </div>
+                        </div> *@
+                        
+                        <button type="submit" class="btn btn-accent w-100 py-2 mt-3">
+                            Đặt hàng
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">Đơn hàng của bạn</h5>
+                </div>
+                <div class="card-body">
+                    <div class="order-items mb-4">
+                        @foreach (var item in cartItems)
+                        {
+                            <div class="d-flex align-items-center mb-3">
+                                <img src="@($"images/{item.Product.Image}")"
+                                     alt="@item.Product.Name" width="60" height="60" class="me-3" style="object-fit: cover;" />
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="mb-0">@item.Product.Name</h6>
+                                            <small class="text-muted">@item.Quantity x @FormatPrice(item.Product.Price + item.ProductOptions.Sum(po => po.DeltaPrice))</small>
+                                        </div>
+                                        <div class="fw-bold">@FormatPrice(item.Quantity * (item.Product.Price + item.ProductOptions.Sum(po => po.DeltaPrice)))</div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
+                    <hr />
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tạm tính</span>
+                        <span>@FormatPrice(subtotal)</span>
+                    </div>
+                    
+                    @if (discount > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Giảm giá</span>
+                            <span>-@FormatPrice(discount)</span>
+                        </div>
+                    }
+                    
+                    <div class="d-flex justify-content-between fw-bold mt-3">
+                        <span>Tổng cộng</span>
+                        <span class="text-accent fs-5">@FormatPrice(total)</span>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Mã giảm giá" @bind="couponCode" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="ApplyCoupon">Áp dụng</button>
+                        </div>
+                    </div>
+                    
+                    @if (appliedCoupon != null)
+                    {
+                        <div class="text-success mt-2">
+                            Mã <strong>@appliedCoupon.Code</strong> đã được áp dụng:
+                            @(appliedCoupon.ValueType == "PERCENT"
+                                                    ? $"{appliedCoupon.Value}%"
+                                                    : FormatPrice((int?)appliedCoupon.Value))
+                        </div>
+                    }
+
+                    <div class="mt-4">
+                        <a href="/cart" class="text-decoration-none">
+                            <i class="bi bi-arrow-left me-1"></i> Quay lại giỏ hàng
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private OrderRequestDto checkoutModel = new();
+    private List<CartItemResponseDto> cartItems = new();
+    private UserResponseDto userInfo = new();
+
+    private int subtotal = 0;
+    private int discount = 0;
+    private int total => subtotal - discount;
+
+    private string couponCode = string.Empty;
+    private CouponResponseDto? appliedCoupon;
+
+    private DateTime dobValue = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cartItems = CheckoutState.CartData ?? new List<CartItemResponseDto>();
+        checkoutModel.Message = CheckoutState.Message ?? string.Empty;
+        subtotal = cartItems?.Sum(i =>
+            (
+                (i?.Product?.Price ?? 0) +
+                (i?.ProductOptions?.Sum(po => po.DeltaPrice) ?? 0)
+            ) * (i?.Quantity ?? 0)
+        ) ?? 0;
+
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var response = await client.GetFromJsonAsync<ApiResponseDto<UserResponseDto>>("api/user/profile");
+        if (response is not null && response.Status == "success")
+        {
+            userInfo = response.Data ?? new UserResponseDto();
+        }
+
+        // SINH NHẬT
+        if (userInfo.Dob.HasValue &&
+            userInfo.Dob.Value.Day == dobValue.Day &&
+            userInfo.Dob.Value.Month == dobValue.Month)
+        {
+            discount = (int)(subtotal * 0.1m); // 10%
+            checkoutModel.DiscountPrice = discount;
+            ToastService.ShowSuccess("Chúc mừng sinh nhật! Bạn đã nhận được giảm giá 10%.");
+            return;
+        }
+    }
+
+    private async Task ApplyCoupon()
+    {
+        if (string.IsNullOrWhiteSpace(couponCode))
+        {
+            ToastService.ShowWarning("Vui lòng nhập mã giảm giá.");
+            return;
+        }
+
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var httpResponse = await client.GetAsync($"api/coupon/{couponCode}/code");
+
+        if (httpResponse.IsSuccessStatusCode)
+        { 
+            var response = await httpResponse.Content.ReadFromJsonAsync<ApiResponseDto<CouponResponseDto>>();
+
+            if (response != null && response.Status == "success" && response.Data != null)
+            {
+                appliedCoupon = response.Data;
+
+                if (appliedCoupon.UsageUsers != null && appliedCoupon.UsageUsers.Contains(userInfo.Id))
+                {
+                    ToastService.ShowWarning("Bạn đã sử dụng mã giảm giá này trước đó.");
+                    appliedCoupon = null;
+                    return;
+                }
+
+                if (appliedCoupon.UsageUsers != null && appliedCoupon.MaxUsages <= appliedCoupon.UsageUsers.Count())
+                {
+                    ToastService.ShowWarning("Mã giảm giá đã hết lượt sử dụng.");
+                    appliedCoupon = null;
+                    return;
+                }
+
+                if (appliedCoupon.MinOrderValue.HasValue && subtotal < appliedCoupon.MinOrderValue)
+                {
+                    ToastService.ShowWarning($"Cần mua ít nhất {FormatPrice(appliedCoupon.MinOrderValue)} sản phẩm phù hợp để áp dụng mã.");
+                    appliedCoupon = null;
+                    return;
+                }
+
+                if (appliedCoupon.DateValid.HasValue && appliedCoupon.DateValid > DateTime.UtcNow)
+                {
+                    ToastService.ShowError("Mã giảm giá không hợp lệ hoặc không áp dụng được.");
+                    appliedCoupon = null;
+                    return;
+                }
+
+                if (appliedCoupon.DateExpired.HasValue && appliedCoupon.DateExpired < DateTime.UtcNow)
+                {
+                    ToastService.ShowWarning("Mã giảm giá đã hết hạn.");
+                    appliedCoupon = null;
+                    return;
+                }
+
+                checkoutModel.CouponId = appliedCoupon.Id;
+
+                // Filter matching items
+                var eligibleItems = cartItems.Where(item =>
+                    (appliedCoupon.Product != null && item.Product.Id == appliedCoupon.Product.Id) ||
+                    (appliedCoupon.Category != null && item.Product.CategoryId == appliedCoupon.Category.Id)
+                ).ToList();
+
+                int eligibleSubtotal = !eligibleItems.Any() ? subtotal : eligibleItems.Sum(item =>
+                    (item.Product.Price + item.ProductOptions.Sum(po => po.DeltaPrice)) * item.Quantity
+                );
+
+                // Calculate discount based on eligible subtotal
+                if (appliedCoupon.ValueType == "PERCENT")
+                {
+                    discount += (int)(eligibleSubtotal * appliedCoupon.Value / 100.0m);
+                }
+                else if (appliedCoupon.ValueType == "FIXED")
+                {
+                    discount += (int)Math.Min(appliedCoupon.Value, eligibleSubtotal);
+                }
+
+                checkoutModel.DiscountPrice = discount;
+
+                if (discount <= 0)
+                {
+                    ToastService.ShowWarning("Mã giảm giá không áp dụng cho sản phẩm trong giỏ hàng.");
+                }
+                else
+                {
+                    ToastService.ShowSuccess($"Áp dụng mã {appliedCoupon.Code} thành công!");
+                }
+            }
+            else
+            {
+                appliedCoupon = null;
+                discount = 0;
+                checkoutModel.CouponId = 0;
+                checkoutModel.DiscountPrice = 0;
+
+                ToastService.ShowError("Mã giảm giá không hợp lệ hoặc không áp dụng được.");
+            }
+        }
+        else
+        {
+            ToastService.ShowError("Không tìm thấy mã giảm giá.");
+        }
+    }
+
+    private async Task PlaceOrder()
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        checkoutModel.OrderDetails = cartItems.Select(item => new OrderDetailRequestDto
+        {
+            ProductId = item.Product.Id,
+            Quantity = item.Quantity,
+            Price = item.Product.Price,
+            ProductOptionIds = item.ProductOptions?.Select(po => po.Id).ToList() ?? new List<int>()
+		}).ToList();
+
+        var response = await client.PostAsJsonAsync("api/order", checkoutModel);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var orderResponse = await response.Content.ReadFromJsonAsync<ApiResponseDto<OrderResponseDto>>();
+            if (orderResponse?.Status == "success")
+            {
+                ToastService.ShowSuccess("Đặt hàng thành công!");
+                Navigation.NavigateTo("/order-history");
+            }
+            else
+            {
+                ToastService.ShowError("Đặt hàng không thành công!");
+            }
+        }
+        else
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ToastService.ShowError($"Đã xảy ra lỗi trong quá trình tạo đơn hàng");
+		}
+    }
+    
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+}

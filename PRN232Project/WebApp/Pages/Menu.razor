@@ -1,0 +1,133 @@
+﻿@page "/menu"
+@using DTOs
+@using FE_PRN232Project.Components.Menu
+@using System.Text.Json
+@using System.Globalization
+
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Thực đơn - Việt Coffee</PageTitle>
+
+<section class="menu-section">
+    <div class="container py-5">
+        @if (Categories == null || FilteredProducts == null)
+        {
+            <p>Loading...</p>
+        } else {
+            <h2 class="section-title mb-4">Thực đơn</h2>
+            <div class="menu-filter-bar card p-3 mb-4 shadow-sm">
+                <form class="row g-2 align-items-end" @onsubmit="OnFilterSubmit">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-tags me-1"></i> Danh mục</label>
+                        <select class="form-select" @bind="selectedCategory">
+                            <option value="">Tất cả</option>
+                            @foreach (var category in Categories)
+                            {
+                                <option value="@category.Name">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 mt-2 mt-md-0">
+                        <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i> Tìm kiếm</label>
+                        <input class="form-control" placeholder="Tên sản phẩm..." @bind="searchTerm" />
+                    </div>
+                    @* <div class="col-6 col-md-2 mt-2 mt-md-0">
+                        <label class="form-label fw-semibold"><i class="bi bi-cash-coin me-1"></i> Giá từ</label>
+                        <input type="number" class="form-control" placeholder="0" @bind="minPrice" min="0" />
+                    </div>
+                    <div class="col-6 col-md-2 mt-2 mt-md-0">
+                        <label class="form-label fw-semibold">Đến</label>
+                        <input type="number" class="form-control" placeholder="" @bind="maxPrice" min="0" />
+                    </div> *@
+                    @* <div class="col-12 col-md-2 mt-2 mt-md-0">
+                        <label class="form-label fw-semibold"><i class="bi bi-lightbulb me-1"></i> Trạng thái</label>
+                        <select class="form-select" @bind="selectedStatus">
+                            <option value="">Tất cả</option>
+                            <option value="ACTIVE">Đang bán</option>
+                            <option value="INACTIVE">Ngừng bán</option>
+                        </select>
+                    </div> *@
+                    <div class="col-6 col-md-1 mt-2 mt-md-0 d-flex gap-2">
+                        <button type="submit" class="btn btn-accent w-100"><i class="bi bi-funnel"></i></button>
+                        <button type="button" class="btn btn-outline-secondary w-100" @onclick="ResetFilters"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </form>
+                </div>
+            <div class="row g-4">
+                @foreach (var product in FilteredProducts)
+                {
+                    if (product.Status == "ACTIVE")
+                    {
+                        <MenuItem Product="@product" />
+                    }
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    public List<ProductResponseDto>? FilteredProducts;
+    public List<CategoryResponseDto>? Categories;
+
+    private string selectedCategory = "";
+    private string searchTerm = "";
+    private int? minPrice = null;
+    private int? maxPrice = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var menuResponse = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
+        FilteredProducts = menuResponse?.Data ?? new List<ProductResponseDto>();
+
+        var categoryResponse = await Http.GetFromJsonAsync<ApiResponseDto<List<CategoryResponseDto>>>("api/category");
+        Categories = categoryResponse?.Data ?? new List<CategoryResponseDto>();
+    }
+
+    private async Task OnFilterSubmit()
+    {
+        await FilterAndLoadProductsAsync();
+    }
+
+    private async Task ResetFilters()
+    {
+        selectedCategory = string.Empty;
+        searchTerm = string.Empty;
+        minPrice = null;
+        maxPrice = null;
+        await FilterAndLoadProductsAsync();
+    }
+
+    private async Task FilterAndLoadProductsAsync()
+    {
+        var response = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
+        var all = response?.Data ?? new List<ProductResponseDto>();
+
+        FilteredProducts = all
+            .Where(p =>
+                (string.IsNullOrWhiteSpace(selectedCategory) || p.Category?.Name == selectedCategory) &&
+                (string.IsNullOrWhiteSpace(searchTerm) || p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                (minPrice == null || p.Price >= minPrice) &&
+                (maxPrice == null || p.Price <= maxPrice)
+            )
+            .ToList();
+
+        StateHasChanged();
+    }
+}
+
+@* /* Add to app.css for filter bar style */
+/*
+.menu-filter-bar .form-label {
+    font-size: 1rem;
+}
+.menu-filter-bar .form-control, .menu-filter-bar .form-select, .menu-filter-bar .btn {
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+}
+.menu-filter-bar .row.g-2 > [class^='col-'] {
+    margin-bottom: 0.5rem;
+}
+*/ *@

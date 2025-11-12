@@ -1,0 +1,67 @@
+﻿@page "/cart"
+@using DTOs
+@using Components
+@using System.Globalization
+@using FE_PRN232Project.Components.Cart
+@using FE_PRN232Project.States
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="flex">
+                <h3 class="mb-4">Cart</h3>
+                <button class="btn btn-outline-danger mb-3" @onclick="ClearCart">
+                    <i class="bi bi-trash3"></i> Clear Cart
+                </button>
+            </div>
+
+            @foreach (var item in cartData?.CartItems ?? new List<CartItemResponseDto>())
+            {
+                <CartItem Item="item" OnChanged="LoadCart" />
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <CartSummary CartItems="cartData?.CartItems ?? new()" />
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserCartResponseDto? cartData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+    }
+
+    private async Task LoadCart()
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var response = await client.GetFromJsonAsync<ApiResponseDto<UserCartResponseDto>>("api/cart");
+
+        if (response is not null && response.Status == "success")
+        {
+            cartData = response.Data;
+        }
+    }
+
+    private async Task ClearCart()
+    {
+        var client = HttpClientFactory.CreateClient("AuthorizedAPI");
+        var response = await client.DeleteAsync("api/cart/clear");
+
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadCart();
+        }
+    }
+
+    private string FormatPrice(int? price)
+    {
+        var culture = new CultureInfo("vi-VN");
+        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+}

@@ -1,0 +1,225 @@
+﻿@page "/"
+@using DTOs
+@inject HttpClient Http
+
+<PageTitle>Việt Coffee - Hương vị cà phê Việt Nam</PageTitle>
+
+<!-- Hero Section -->
+<section class="hero-section" style="background-image: url('images/hero-bg.jpg');">
+    <div class="hero-overlay"></div>
+    <div class="container">
+        <div class="hero-content" data-aos="fade-right">
+            <h1 class="hero-title">Khám phá hương vị cà phê Việt Nam</h1>
+            <p class="hero-subtitle">Trải nghiệm hương vị đậm đà, phong phú và độc đáo từ những hạt cà phê được chọn lọc kỹ lưỡng từ vùng Tây Nguyên</p>
+            <a href="/menu" class="btn btn-hero">Xem thực đơn</a>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products Section -->
+@* <section class="featured-section">
+    <div class="container">
+        <h2 class="section-title" data-aos="fade-up">Sản phẩm nổi bật</h2>
+        
+        @if (featuredProducts == null)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="featured-products">
+                @foreach (var product in featuredProducts)
+                {
+                    <div class="product-card" data-aos="fade-up" data-aos-delay="@(100 * (featuredProducts.IndexOf(product) + 1))">
+                        <img src="@(product.Images.Any() ? product.Images.First() : "images/default-img.png")" 
+                             alt="@product.Name" class="product-img">
+                        <div class="product-info">
+                            <h3 class="product-title">@product.Name</h3>
+                            <div class="product-category">@product.Category?.Name</div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="product-price">@FormatPrice(product.Price)</div>
+                                <button class="btn btn-add-cart">
+                                    <i class="bi bi-cart-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <div class="text-center mt-5" data-aos="fade-up">
+                <a href="/menu" class="btn btn-accent">Xem tất cả sản phẩm</a>
+            </div>
+        }
+    </div>
+</section> *@
+
+<!-- About Section -->
+<section class="about-section">
+    <div class="container">
+        <div class="about-container">
+            <div class="about-img" data-aos="fade-right">
+                <img src="images/about-coffee.jpg" alt="Về chúng tôi" class="img-fluid rounded">
+            </div>
+            <div class="about-content" data-aos="fade-left">
+                <h2 class="about-title">Về Việt Coffee</h2>
+                <p class="about-text">
+                    Việt Coffee được thành lập với niềm đam mê mang đến hương vị cà phê Việt Nam chính gốc đến với mọi người.
+                    Chúng tôi tự hào về nguồn cà phê chất lượng cao được trồng tại vùng Tây Nguyên - nơi có khí hậu và thổ nhưỡng
+                    lý tưởng cho cây cà phê phát triển.
+                </p>
+                <p class="about-text">
+                    Mỗi ly cà phê của chúng tôi đều được pha chế tỉ mỉ bởi những barista giàu kinh nghiệm, 
+                    mang đến cho bạn trải nghiệm thưởng thức cà phê đích thực của Việt Nam.
+                </p>
+                <a href="/about" class="btn btn-accent">Tìm hiểu thêm</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Special Offers -->
+<section class="featured-section" style="background-color: #f0e9df;">
+    <div class="container">
+        <h2 class="section-title" data-aos="fade-up">Ưu đãi đặc biệt</h2>
+        
+        <div class="row g-4">
+            <div class="col-md-4" data-aos="fade-up">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-coffee fa-3x text-success"></i>
+                        </div>
+                        <h3 class="card-title h5">Mua 1 tặng 1</h3>
+                        <p class="card-text">Thứ Hai hàng tuần, khi mua 1 ly cà phê bất kỳ sẽ được tặng 1 ly cùng loại.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-birthday-cake fa-3x text-success"></i>
+                        </div>
+                        <h3 class="card-title h5">Ưu đãi sinh nhật</h3>
+                        <p class="card-text">Giảm 30% cho tất cả đồ uống vào ngày sinh nhật của bạn khi đăng ký thành viên.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-users fa-3x text-success"></i>
+                        </div>
+                        <h3 class="card-title h5">Khách hàng thân thiết</h3>
+                        <p class="card-text">Tích điểm với mỗi đơn hàng và đổi quà hấp dẫn từ Việt Coffee.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Section -->
+@* <section class="newsletter-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6" data-aos="fade-right">
+                <h2 class="text-dark mb-4">Đăng ký nhận thông tin</h2>
+                <p class="mb-4">Đăng ký để nhận thông tin về các sản phẩm mới, khuyến mãi đặc biệt và các sự kiện sắp tới của Việt Coffee.</p>
+            </div>
+            <div class="col-lg-6" data-aos="fade-left">
+                <div class="card border-0">
+                    <div class="card-body p-4">
+                        <div class="input-group mb-3">
+                            <input type="email" class="form-control" placeholder="Địa chỉ email của bạn" aria-label="Email address">
+                            <button class="btn btn-accent" type="button">Đăng ký</button>
+                        </div>
+                        <div class="form-text text-muted">Chúng tôi cam kết bảo mật thông tin của bạn.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section> *@
+
+@code {
+    private List<ProductResponseDto> featuredProducts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // In a real app, you would fetch featured products from the API
+            // For now, we'll create some mock data based on the ProductResponseDto structure
+            featuredProducts = await GetMockFeaturedProducts();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+            featuredProducts = new List<ProductResponseDto>();
+        }
+    }
+
+    private async Task<List<ProductResponseDto>> GetMockFeaturedProducts()
+    {
+        // This would be replaced with an actual API call in a real application
+        await Task.Delay(500); // Simulate network delay
+        
+        return new List<ProductResponseDto>
+        {
+            new ProductResponseDto
+            {
+                Id = 1,
+                Name = "Cà phê đen",
+                Description = "Cà phê đen đậm đà, hương vị truyền thống Việt Nam",
+                Price = 10000,
+                Category = new CategoryResponseDto { Id = 1, Name = "Coffee" },
+                Status = "ACTIVE",
+                Images = new List<string> { "images/black-coffee.jpg" }
+            },
+            new ProductResponseDto
+            {
+                Id = 2,
+                Name = "Cà phê sữa",
+                Description = "Cà phê sữa đặc, thơm béo, ngọt dịu",
+                Price = 15000,
+                Category = new CategoryResponseDto { Id = 1, Name = "Coffee" },
+                Status = "ACTIVE",
+                Images = new List<string> { "images/milk-coffee.jpg" }
+            },
+            new ProductResponseDto
+            {
+                Id = 3,
+                Name = "Trà sữa truyền thống",
+                Description = "Trà sữa truyền thống với hương vị thơm ngon",
+                Price = 25000,
+                Category = new CategoryResponseDto { Id = 2, Name = "Milk Tea" },
+                Status = "ACTIVE",
+                Images = new List<string> { "images/milk-tea.jpg" }
+            },
+            new ProductResponseDto
+            {
+                Id = 4,
+                Name = "Trà sữa trân châu đường nâu",
+                Description = "Trà sữa với trân châu và đường nâu thơm ngon",
+                Price = 35000,
+                Category = new CategoryResponseDto { Id = 2, Name = "Milk Tea" },
+                Status = "ACTIVE",
+                Images = new List<string> { "images/brown-sugar-milk-tea.jpg" }
+            }
+        };
+    }
+
+    private string FormatPrice(int price)
+    {
+        return $"{price:N0}đ";
+    }
+}

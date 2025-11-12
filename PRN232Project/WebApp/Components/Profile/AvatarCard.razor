@@ -1,0 +1,13 @@
+﻿@using DTOs
+<div class="card-body text-center py-4">
+    <div class="mb-3">
+        <img src="images/default-avatar.png" alt="Avatar" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;" onerror="this.src='images/default-img.png'" />
+    </div>
+    <h5 class="fw-bold">@fullname</h5>
+    <p class="text-muted mb-0">Thành viên từ @UserProfile.CreatedAt.ToString("dd/MM/yyyy")</p>
+</div>
+
+@code {
+	[Parameter] public UserResponseDto UserProfile { get; set; } = new UserResponseDto();
+	string fullname => new string(UserProfile.Fullname);
+}
