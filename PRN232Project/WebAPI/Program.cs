@@ -65,7 +65,6 @@ namespace WebAPI
             builder.Services.AddScoped<IProductOptionRepository, ProductOptionRepository>();
             builder.Services.AddScoped<ICartItemRepository, CartItemRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<ICouponRepository, CouponRepository>();
             builder.Services.AddScoped<ICouponUsageRepository, CouponUsageRepository>();
 
             builder.Services.AddScoped<IUserService, UserService>();
@@ -73,7 +72,6 @@ namespace WebAPI
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICartService, CartService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
-            builder.Services.AddScoped<ICouponService, CouponService>();
 
             builder.Services.AddScoped<JwtService>();
 

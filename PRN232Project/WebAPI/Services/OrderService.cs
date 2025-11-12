@@ -11,7 +11,6 @@ namespace Services
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
         private readonly IProductOptionRepository _productOptionRepository;
-        private readonly ICouponRepository _couponRepository;
         private readonly ICouponUsageRepository _couponUsageRepository;
         private readonly ICartService _cartService;
 
@@ -19,14 +18,12 @@ namespace Services
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IProductOptionRepository productOptionRepository,
-            ICouponRepository couponRepository,
             ICouponUsageRepository couponUsageRepository,
             ICartService cartService)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _productOptionRepository = productOptionRepository;
-            _couponRepository = couponRepository ?? throw new ArgumentNullException(nameof(couponRepository));
             _couponUsageRepository = couponUsageRepository ?? throw new ArgumentNullException(nameof(couponUsageRepository));
             _cartService = cartService;
         }
