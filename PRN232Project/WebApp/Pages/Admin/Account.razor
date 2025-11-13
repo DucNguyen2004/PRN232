@@ -324,11 +324,11 @@
             // Only fetch if AllUsers is empty (first load)
             if (!AllUsers.Any())
             {
-                var response = await Http.GetFromJsonAsync<ApiResponseDto<List<UserResponseDto>>>("api/user");
+                var response = await Http.GetFromJsonAsync<List<UserResponseDto>>("api/user");
 
-                if (response?.Data != null)
+                if (response != null)
                 {
-                    AllUsers = response.Data;
+                    AllUsers = response;
                 }
             }
 

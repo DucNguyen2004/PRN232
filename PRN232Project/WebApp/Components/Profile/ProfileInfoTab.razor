@@ -188,12 +188,12 @@
         // Check for duplicate email/phone (excluding current user)
         try
         {
-            var checkResponse = await Http.GetFromJsonAsync<ApiResponseDto<IsUserExistedDto>>(
+            var checkResponse = await Http.GetFromJsonAsync<IsUserExistedDto>(
                 $"api/user/is-existed?email={UserProfile.Email}&phone={UserProfile.Phone}&excludeUserId={UserProfile.Id}");
 
-            if (checkResponse?.Data is not null)
+            if (checkResponse is not null)
             {
-                var checkData = checkResponse.Data;
+                var checkData = checkResponse;
 
                 if (checkData.EmailExists)
                     messageStore.Add(() => UserProfile.Email, "Email đã được sử dụng bởi người dùng khác.");

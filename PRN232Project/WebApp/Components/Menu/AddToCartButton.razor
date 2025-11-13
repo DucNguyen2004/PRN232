@@ -1,6 +1,9 @@
 ﻿@using DTOs
 @using Blazored.Toast.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject Blazored.Toast.Services.IToastService ToastService
+@inject AuthenticationStateProvider AuthProvider
+
 
 <button class="btn btn-add-cart mt-3 w-100" @onclick:stopPropagation="true" @onclick="HandleAddToCart">
     <i class="bi bi-cart-plus me-2"></i>
@@ -37,13 +40,21 @@
 
     private async Task CheckCartItemExists()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+        if (!isAuth)
+        {
+            IsInCart = false;
+            ExistingCartItem = null;
+            return;
+        }
+
         var client = HttpClientFactory.CreateClient("API");
 
-        var response = await client.GetFromJsonAsync<ApiResponseDto<UserCartResponseDto>>("api/cart");
+        var response = await client.GetFromJsonAsync<UserCartResponseDto>("api/cart");
 
-        if (response?.Data?.CartItems != null)
+        if (response?.CartItems != null)
         {
-            var existing = response.Data.CartItems.FirstOrDefault(item =>
+            var existing = response.CartItems.FirstOrDefault(item =>
                 item.Product.Id == ProductId &&
                 item.ProductOptions.Select(po => po.Id).OrderBy(x => x).SequenceEqual(Options.OrderBy(x => x)));
 
@@ -67,6 +78,14 @@
 
     private async Task HandleAddToCart()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+
+        if (!isAuth)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         var client = HttpClientFactory.CreateClient("API");
 
         if (IsInCart && ExistingCartItem != null)
@@ -104,4 +123,10 @@
             }
         }
     }
+    private async Task<bool> IsUserAuthenticatedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated ?? false;
+    }
+
 }

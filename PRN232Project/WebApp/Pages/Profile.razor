@@ -103,10 +103,10 @@
     private async Task GetProfile()
     {
         var client = HttpClientFactory.CreateClient("API");
-        var response = await client.GetFromJsonAsync<ApiResponseDto<UserResponseDto>>("api/user/profile");
-        if (response is not null && response.Status == "success")
+        var response = await client.GetFromJsonAsync<UserResponseDto>("api/user/profile");
+        if (response is not null)
         {
-            userProfile = response.Data ?? new UserResponseDto();
+            userProfile = response;
         }
     }
 

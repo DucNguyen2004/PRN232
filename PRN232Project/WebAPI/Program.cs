@@ -49,6 +49,19 @@ namespace WebAPI
             // 2. Add Authorization
             builder.Services.AddAuthorization();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowBlazorLocalhost", policy =>
+                {
+                    policy.WithOrigins(
+                        "http://localhost:5204"
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials(); // Add this if you're sending authentication headers
+                });
+            });
+
             builder.Services
                 .AddControllers().AddJsonOptions(options =>
                 {
@@ -105,6 +118,9 @@ namespace WebAPI
 
 
             var app = builder.Build();
+
+            app.UseCors("AllowBlazorLocalhost");
+
 
             app.UseAuthentication();
             app.UseAuthorization();

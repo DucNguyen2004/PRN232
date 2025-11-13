@@ -79,11 +79,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var menuResponse = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
-        FilteredProducts = menuResponse?.Data ?? new List<ProductResponseDto>();
+        var menuResponse = await Http.GetFromJsonAsync<List<ProductResponseDto>>("api/product");
+        FilteredProducts = menuResponse ?? new List<ProductResponseDto>();
 
-        var categoryResponse = await Http.GetFromJsonAsync<ApiResponseDto<List<CategoryResponseDto>>>("api/category");
-        Categories = categoryResponse?.Data ?? new List<CategoryResponseDto>();
+        var categoryResponse = await Http.GetFromJsonAsync<List<CategoryResponseDto>>("api/category");
+        Categories = categoryResponse ?? new List<CategoryResponseDto>();
     }
 
     private async Task OnFilterSubmit()
@@ -102,8 +102,8 @@
 
     private async Task FilterAndLoadProductsAsync()
     {
-        var response = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
-        var all = response?.Data ?? new List<ProductResponseDto>();
+        var response = await Http.GetFromJsonAsync<List<ProductResponseDto>>("api/product");
+        var all = response ?? new List<ProductResponseDto>();
 
         FilteredProducts = all
             .Where(p =>

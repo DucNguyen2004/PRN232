@@ -85,8 +85,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var detailResp = await Http.GetFromJsonAsync<ApiResponseDto<ProductResponseDto>>($"api/product/{ProductId}");
-        product = detailResp?.Data;
+        var detailResp = await Http.GetFromJsonAsync<ProductResponseDto>($"api/product/{ProductId}");
+        product = detailResp;
 
         // var menu = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>($"api/product");
         // RecommendedProducts = menu?.Data?

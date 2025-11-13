@@ -280,8 +280,8 @@
     private async Task LoadOrders()
     {
         var client = HttpClientFactory.CreateClient("API");
-        var response = await client.GetFromJsonAsync<ApiResponseDto<List<OrderResponseDto>>>($"api/order");
-        AllOrders = response?.Data ?? new();
+        var response = await client.GetFromJsonAsync<List<OrderResponseDto>>($"api/order");
+        AllOrders = response ?? new();
         HandleFilters();
     }
 

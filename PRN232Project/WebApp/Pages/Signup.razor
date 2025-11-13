@@ -189,14 +189,14 @@
             return;
         }
 
-        var checkResponse = await Http.GetFromJsonAsync<ApiResponseDto<IsUserExistedDto>>(
+        var checkResponse = await Http.GetFromJsonAsync<IsUserExistedDto>(
             $"api/user/is-existed?email={signupModel.Email}&phone={signupModel.Phone}&username={signupModel.Username}");
 
-        if (checkResponse?.Data is not null)
+        if (checkResponse is not null)
         {
             Console.WriteLine("There");
 
-            var checkData = checkResponse?.Data;
+            var checkData = checkResponse;
 
             if (checkData.UserNameExists)
 				messageStore.Add(() => signupModel.Username, "Tên đăng nhập đã được sử dụng.");

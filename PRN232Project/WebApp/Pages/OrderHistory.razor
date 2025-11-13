@@ -103,10 +103,10 @@
     private async Task GetOrders()
     {
         var client = HttpClientFactory.CreateClient("API");
-        var response = await client.GetFromJsonAsync<ApiResponseDto<List<OrderResponseDto>>>("api/order/user");
-        if (response is not null && response.Status == "success")
+        var response = await client.GetFromJsonAsync<List<OrderResponseDto>>("api/order/user");
+        if (response is not null)
         {
-            orders = response.Data ?? new List<OrderResponseDto>();
+            orders = response;
         }
     }
 

@@ -36,9 +36,11 @@ namespace WebApp
 
             builder.Services.AddHttpClient("API", client =>
             {
-                client.BaseAddress = new Uri("https://localhost:5152/");
+                client.BaseAddress = new Uri("http://localhost:5152/");
             })
             .AddHttpMessageHandler<CustomAuthorizationMessageHandler>();
+
+            builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("API"));
 
             await builder.Build().RunAsync();
         }

@@ -199,10 +199,10 @@
 
     private async Task LoadData()
     {
-        var productRes = await Http.GetFromJsonAsync<ApiResponseDto<List<ProductResponseDto>>>("api/product");
-        var categoryRes = await Http.GetFromJsonAsync<ApiResponseDto<List<CategoryResponseDto>>>("api/category");
-        AllProducts = productRes?.Data ?? new();
-        Categories = categoryRes?.Data ?? new();
+        var productRes = await Http.GetFromJsonAsync<List<ProductResponseDto>>("api/product");
+        var categoryRes = await Http.GetFromJsonAsync<List<CategoryResponseDto>>("api/category");
+        AllProducts = productRes ?? new();
+        Categories = categoryRes ?? new();
         HandleFilters();
     }
 

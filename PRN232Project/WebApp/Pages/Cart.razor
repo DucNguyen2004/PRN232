@@ -40,11 +40,11 @@
     private async Task LoadCart()
     {
         var client = HttpClientFactory.CreateClient("API");
-        var response = await client.GetFromJsonAsync<ApiResponseDto<UserCartResponseDto>>("api/cart");
+        var response = await client.GetFromJsonAsync<UserCartResponseDto>("api/cart");
 
-        if (response is not null && response.Status == "success")
+        if (response is not null)
         {
-            cartData = response.Data;
+            cartData = response;
         }
     }
 
