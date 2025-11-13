@@ -1,6 +1,6 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
-using Mappers;
 using Repositories;
 
 namespace Services
@@ -13,41 +13,40 @@ namespace Services
         private readonly IProductOptionRepository _productOptionRepository;
         private readonly ICouponUsageRepository _couponUsageRepository;
         private readonly ICartService _cartService;
+        private readonly IMapper _mapper;
 
         public OrderService(
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IProductOptionRepository productOptionRepository,
             ICouponUsageRepository couponUsageRepository,
-            ICartService cartService)
+            ICartService cartService,
+            IMapper mapper)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _productOptionRepository = productOptionRepository;
             _couponUsageRepository = couponUsageRepository ?? throw new ArgumentNullException(nameof(couponUsageRepository));
             _cartService = cartService;
+            _mapper = mapper;
         }
 
         public async Task<OrderResponseDto> GetOrderByIdAsync(int id)
         {
             var order = await _orderRepository.GetByIdAsync(id);
-            return Mappers.OrderMapper.ToDTO(order);
+            return _mapper.Map<OrderResponseDto>(order);
         }
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
         {
             var orders = await _orderRepository.GetAllAsync();
-            var responses = orders.Select(OrderMapper.ToDTO).ToList();
-
-            return responses;
+            return _mapper.Map<IEnumerable<OrderResponseDto>>(orders);
         }
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersByUserIdAsync(int userId)
         {
             var orders = await _orderRepository.GetAllByUserIdAsync(userId);
-            var responses = orders.Select(OrderMapper.ToDTO).ToList();
-
-            return responses;
+            return _mapper.Map<IEnumerable<OrderResponseDto>>(orders);
         }
 
         public async Task<Order> PlaceOrderAsync(OrderRequestDto dto, int userId)
@@ -69,14 +68,15 @@ namespace Services
                 await _couponUsageRepository.AddUsageAsync(dto.CouponId, userId);
             }
 
-            var newOrder = Mappers.OrderMapper.ToEntity(dto);
+            var newOrder = _mapper.Map<Order>(dto);
+            newOrder.UserId = userId;
             for (int i = 0; i < newOrder.OrderDetails.Count; i++)
             {
-                OrderDetailRequestDto detailDto = dto.OrderDetails.ElementAt(i);
-                OrderDetail newDetail = newOrder.OrderDetails.ElementAt(i);
+                var detailDto = dto.OrderDetails.ElementAt(i);
+                var newDetail = newOrder.OrderDetails.ElementAt(i);
                 newDetail.ProductOptions = await _productOptionRepository.GetByIdsAsync(detailDto.ProductOptionIds, detailDto.ProductId);
             }
-            newOrder.UserId = userId;
+            //newOrder.UserId = userId;
 
             await _cartService.ClearCart(userId);
 
@@ -85,11 +85,11 @@ namespace Services
 
         public async Task UpdateOrderAsync(int id, OrderRequestDto dto)
         {
-            var updatedOrder = Mappers.OrderMapper.ToEntity(dto);
+            var updatedOrder = _mapper.Map<Order>(dto);
             for (int i = 0; i < updatedOrder.OrderDetails.Count; i++)
             {
-                OrderDetailRequestDto detailDto = dto.OrderDetails.ElementAt(i);
-                OrderDetail newDetail = updatedOrder.OrderDetails.ElementAt(i);
+                var detailDto = dto.OrderDetails.ElementAt(i);
+                var newDetail = updatedOrder.OrderDetails.ElementAt(i);
                 newDetail.ProductOptions = await _productOptionRepository.GetByIdsAsync(detailDto.ProductOptionIds, detailDto.ProductId);
             }
 

@@ -1,4 +1,5 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Services;
@@ -10,10 +11,12 @@ namespace PRN232Project.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly IMapper _mapper;
 
-        public ProductController(IProductService productService)
+        public ProductController(IProductService productService, IMapper mapper)
         {
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
+            _mapper = mapper;
         }
 
         [HttpGet]
@@ -49,7 +52,7 @@ namespace PRN232Project.Controllers
             }
 
             Product product = await _productService.CreateProductAsync(dto);
-            return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, Mappers.ProductMapper.ToDTO(product));
+            return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, _mapper.Map<ProductResponseDto>(product));
         }
 
         [HttpPut("{id:int}")]

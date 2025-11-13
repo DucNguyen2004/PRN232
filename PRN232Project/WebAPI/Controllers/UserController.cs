@@ -1,4 +1,5 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Services;
@@ -11,10 +12,12 @@ namespace PRN232Project.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IMapper _mapper;
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, IMapper mapper)
         {
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(_mapper));
         }
 
         [HttpGet]
@@ -83,7 +86,7 @@ namespace PRN232Project.Controllers
             }
 
             User user = await _userService.CreateUserAsync(dto);
-            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, Mappers.UserMapper.ToDTO(user));
+            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, _mapper.Map<UserResponseDto>(user));
         }
 
         [HttpPut("{id:int}")]

@@ -1,4 +1,5 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
 using Repositories;
 
@@ -8,33 +9,37 @@ namespace Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IRoleRepository _roleRepository;
+        private readonly IMapper _mapper;
 
-        public UserService(IUserRepository userRepository, IRoleRepository roleRepository)
+        public UserService(IUserRepository userRepository, IRoleRepository roleRepository, IMapper mapper)
         {
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _roleRepository = roleRepository;
+            _mapper = mapper;
         }
 
         public async Task<UserResponseDto> GetUserByIdAsync(int id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            return Mappers.UserMapper.ToDTO(user);
+            return _mapper.Map<UserResponseDto>(user);
         }
 
         public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
         {
             var users = await _userRepository.GetAllAsync();
             var filteredUsers = users.Where(u => u.Username != "admin");
-            return filteredUsers.Select(u => Mappers.UserMapper.ToDTO(u));
+            return _mapper.Map<IEnumerable<UserResponseDto>>(filteredUsers);
         }
 
         public async Task<PaginationResponseDto<UserResponseDto>> GetUsersPagedAsync(PaginationRequestDto request)
         {
             var (users, total) = await _userRepository.GetPagedAsync(request.Page, request.PageSize);
 
+            var userDtos = _mapper.Map<IEnumerable<UserResponseDto>>(users);
+
             return new PaginationResponseDto<UserResponseDto>
             {
-                Items = users.Select(Mappers.UserMapper.ToDTO),
+                Items = userDtos,
                 TotalItems = total,
                 TotalPages = (int)Math.Ceiling((double)total / request.PageSize),
                 Page = request.Page,
@@ -44,7 +49,7 @@ namespace Services
 
         public async Task<User> CreateUserAsync(UserRequestDto dto)
         {
-            var user = Mappers.UserMapper.ToEntity(dto);
+            var user = _mapper.Map<User>(dto);
 
             var roles = await _roleRepository.GetAllAsync();
             user.Roles = roles.Where(r => dto.RoleIds.Contains(r.Id)).ToList();
@@ -54,7 +59,7 @@ namespace Services
 
         public async Task UpdateUserAsync(int id, UserRequestDto dto)
         {
-            User updatedUser = Mappers.UserMapper.ToEntity(dto);
+            User updatedUser = _mapper.Map<User>(dto);
 
             var roles = await _roleRepository.GetAllAsync();
             updatedUser.Roles = roles.Where(r => dto.RoleIds.Contains(r.Id)).ToList();

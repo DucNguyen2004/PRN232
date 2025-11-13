@@ -1,6 +1,6 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
-using Mappers;
 using Repositories;
 
 namespace Services
@@ -9,11 +9,13 @@ namespace Services
     {
         private readonly ICartItemRepository _cartItemRepository;
         private readonly IProductOptionRepository _productOptionRepository;
+        private readonly IMapper _mapper;
 
-        public CartService(ICartItemRepository cartItemRepository, IProductOptionRepository productOptionRepository)
+        public CartService(ICartItemRepository cartItemRepository, IProductOptionRepository productOptionRepository, IMapper mapper)
         {
             _cartItemRepository = cartItemRepository;
             _productOptionRepository = productOptionRepository;
+            _mapper = mapper;
         }
 
         public async Task<UserCartResponseDto> GetAllCartItems(int userId) // change parameter ?
@@ -23,27 +25,23 @@ namespace Services
             return new UserCartResponseDto
             {
                 UserId = userId,
-                CartItems = cartItems.Select(CartItemMapper.ToDTO).ToList()
+                CartItems = _mapper.Map<List<CartItemResponseDto>>(cartItems)
             };
         }
 
         public async Task<CartItemResponseDto> GetCartItemById(int cartItemId)
         {
             var cartItem = await _cartItemRepository.GetByIdAsync(cartItemId);
-            return CartItemMapper.ToDTO(cartItem);
+            return _mapper.Map<CartItemResponseDto>(cartItem);
         }
 
         public async Task<CartItem> AddToCart(CartItemRequestDto dto, int userId)
         {
             var productOptions = await _productOptionRepository.GetByIdsAsync(dto.ProductOptionIds, dto.ProductId);
 
-            var cartItem = new CartItem
-            {
-                Quantity = dto.Quantity,
-                ProductId = dto.ProductId,
-                UserId = userId,
-                ProductOptions = productOptions
-            };
+            var cartItem = _mapper.Map<CartItem>(dto);
+            cartItem.UserId = userId;
+            cartItem.ProductOptions = productOptions;
 
             return await _cartItemRepository.AddToCartAsync(cartItem);
         }

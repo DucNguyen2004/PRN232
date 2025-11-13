@@ -1,4 +1,5 @@
-﻿using DTOs;
+﻿using AutoMapper;
+using DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services;
@@ -12,10 +13,12 @@ namespace PRN232Project.Controllers
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly IMapper _mapper;
 
-        public OrderController(IOrderService orderService)
+        public OrderController(IOrderService orderService, IMapper mapper)
         {
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
+            _mapper = mapper;
         }
 
         [HttpGet("{id:int}")]
@@ -64,7 +67,7 @@ namespace PRN232Project.Controllers
             }
 
             var order = await _orderService.PlaceOrderAsync(dto, userId);
-            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, Mappers.OrderMapper.ToDTO(order));
+            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, _mapper.Map<OrderResponseDto>(order));
         }
 
         [HttpPut("{id:int}")]

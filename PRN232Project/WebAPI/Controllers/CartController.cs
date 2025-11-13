@@ -1,4 +1,5 @@
-﻿using BusinessObjects;
+﻿using AutoMapper;
+using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,12 @@ namespace PRN232Project.Controllers
     public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
+        private readonly IMapper _mapper;
 
-        public CartController(ICartService cartService)
+        public CartController(ICartService cartService, IMapper mapper)
         {
             _cartService = cartService ?? throw new ArgumentNullException(nameof(cartService));
+            _mapper = mapper;
         }
 
         [HttpGet]
@@ -71,7 +74,7 @@ namespace PRN232Project.Controllers
             }
 
             CartItem cartItem = await _cartService.AddToCart(dto, userId);
-            return CreatedAtAction(nameof(GetCartItemById), new { id = cartItem.Id }, Mappers.CartItemMapper.ToDTO(cartItem));
+            return CreatedAtAction(nameof(GetCartItemById), new { id = cartItem.Id }, _mapper.Map<CartItemResponseDto>(cartItem));
         }
 
         [HttpPut("{cartItemId:int}")]
