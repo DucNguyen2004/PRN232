@@ -45,7 +45,7 @@ namespace PRN232Project.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<CartItemResponseDto>> GetCartItemById(int id)
         {
-            var cart = _cartService.GetCartItemById(id);
+            var cart = await _cartService.GetCartItemById(id);
             if (cart == null)
             {
                 return NotFound("Cart not found");
@@ -80,7 +80,7 @@ namespace PRN232Project.Controllers
         [HttpPut("{cartItemId:int}")]
         public async Task<ActionResult> UpdateCartItemQuantity(int cartItemId, [FromBody] int newQuantity)
         {
-            var cart = _cartService.GetCartItemById(cartItemId);
+            var cart = await _cartService.GetCartItemById(cartItemId);
             if (cart == null)
             {
                 return NotFound("Cart not found");
@@ -93,7 +93,7 @@ namespace PRN232Project.Controllers
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> DeleteCartItem(int id)
         {
-            var cart = _cartService.GetCartItemById(id);
+            var cart = await _cartService.GetCartItemById(id);
             if (cart == null)
             {
                 return NotFound("Cart not found");

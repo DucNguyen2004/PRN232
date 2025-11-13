@@ -101,6 +101,10 @@
             {
                 await localStorage.SetItemAsync("userRole", "admin");
             }
+            else
+            {
+                await localStorage.SetItemAsync("userRole", "user");
+            }
             Navigation.NavigateTo("/", forceLoad: true);
         }
         else

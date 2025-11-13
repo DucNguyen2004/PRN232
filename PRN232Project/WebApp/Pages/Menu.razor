@@ -1,12 +1,10 @@
 ﻿@page "/menu"
 @using DTOs
 @using WebApp.Components.Menu
-@using System.Text.Json
 @using System.Globalization
 
 @inject NavigationManager Navigation
 @inject HttpClient Http
-@inject IJSRuntime JS
 
 <PageTitle>Thực đơn - Việt Coffee</PageTitle>
 
@@ -15,108 +13,79 @@
         @if (Categories == null || FilteredProducts == null)
         {
             <p>Loading...</p>
-        } else {
+        }
+        else
+        {
             <h2 class="section-title mb-4">Thực đơn</h2>
+
+            <!-- FILTER BAR -->
             <div class="menu-filter-bar card p-3 mb-4 shadow-sm">
                 <form class="row g-2 align-items-end" @onsubmit="OnFilterSubmit">
+                    
+                    <!-- CATEGORY FILTER -->
                     <div class="col-12 col-md-3">
-                        <label class="form-label fw-semibold"><i class="bi bi-tags me-1"></i> Danh mục</label>
-                        <select class="form-select" @bind="selectedCategory">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-tags me-1"></i> Danh mục
+                        </label>
+
+                        <!-- IMPORTANT: Bind as string so empty option works -->
+                        <select class="form-select" @bind="selectedCategoryIdString">
                             <option value="">Tất cả</option>
                             @foreach (var category in Categories)
                             {
-                                <option value="@category.Name">@category.Name</option>
+                                <option value="@category.Id">@category.Name</option>
                             }
                         </select>
                     </div>
+
+                    <!-- SEARCH -->
                     <div class="col-12 col-md-3 mt-2 mt-md-0">
-                        <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i> Tìm kiếm</label>
-                        <input class="form-control" placeholder="Tên sản phẩm..." @bind="searchTerm" />
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-search me-1"></i> Tìm kiếm
+                        </label>
+                        <input class="form-control" placeholder="Tên sản phẩm..."
+                               @bind="searchTerm" />
                     </div>
-                    @* <div class="col-6 col-md-2 mt-2 mt-md-0">
-                        <label class="form-label fw-semibold"><i class="bi bi-cash-coin me-1"></i> Giá từ</label>
-                        <input type="number" class="form-control" placeholder="0" @bind="minPrice" min="0" />
-                    </div>
-                    <div class="col-6 col-md-2 mt-2 mt-md-0">
-                        <label class="form-label fw-semibold">Đến</label>
-                        <input type="number" class="form-control" placeholder="" @bind="maxPrice" min="0" />
-                    </div> *@
-                    @* <div class="col-12 col-md-2 mt-2 mt-md-0">
-                        <label class="form-label fw-semibold"><i class="bi bi-lightbulb me-1"></i> Trạng thái</label>
-                        <select class="form-select" @bind="selectedStatus">
-                            <option value="">Tất cả</option>
-                            <option value="ACTIVE">Đang bán</option>
-                            <option value="INACTIVE">Ngừng bán</option>
-                        </select>
-                    </div> *@
+
+                    <!-- ACTION BUTTONS -->
                     <div class="col-6 col-md-1 mt-2 mt-md-0 d-flex gap-2">
-                        <button type="submit" class="btn btn-accent w-100"><i class="bi bi-funnel"></i></button>
-                        <button type="button" class="btn btn-outline-secondary w-100" @onclick="ResetFilters"><i class="bi bi-x-lg"></i></button>
+                        <button type="submit" class="btn btn-accent w-100">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary w-100"
+                                @onclick="ResetFilters">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
+
                 </form>
-                </div>
+            </div>
+
+            <!-- PRODUCT LIST -->
             <div class="row g-4">
                 @foreach (var product in FilteredProducts)
                 {
-                    if (product.Status == "ACTIVE")
-                    {
+                    if (product.Status == "ACTIVE"){
                         <MenuItem Product="@product" />
                     }
                 }
             </div>
-
-            <div class="pagination d-flex justify-content-center mt-4">
-
-                <button class="btn btn-outline-primary me-2"
-                        disabled="@(CurrentPage == 1)"
-                        @onclick="() => ChangePage(CurrentPage - 1)">
-                    Trước
-                </button>
-
-                @foreach (var item in BuildPageItems())
-                {
-                    if (item.IsEllipsis)
-                    {
-                        <span class="mx-2 mt-2">...</span>
-                    }
-                    else
-                    {
-                        <button class="btn @(item.IsCurrent ? "btn-primary" : "btn-outline-primary") mx-1"
-                                @onclick="() => ChangePage(item.PageNumber!.Value)">
-                            @item.PageNumber
-                        </button>
-                    }
-                }
-
-                <button class="btn btn-outline-primary ms-2"
-                        disabled="@(CurrentPage == TotalPages)"
-                        @onclick="() => ChangePage(CurrentPage + 1)">
-                    Sau
-                </button>
-
-            </div>
-
         }
     </div>
 </section>
 
 @code {
-    public class PageItem
-    {
-        public int? PageNumber { get; set; }
-        public bool IsCurrent { get; set; }
-        public bool IsEllipsis => PageNumber == null;
-    }
-
-    private int PageSize = 12;
-    private int CurrentPage = 1;
-    private int TotalItems = 0;
-    private int TotalPages => (int)Math.Ceiling(TotalItems / (double)PageSize);
 
     public List<ProductResponseDto>? FilteredProducts;
     public List<CategoryResponseDto>? Categories;
 
-    private string selectedCategory = "";
+    // Store category as string from <select>
+    private string? selectedCategoryIdString = null;
+
+    // Convert to int? for OData
+    private int? SelectedCategoryId =>
+        int.TryParse(selectedCategoryIdString, out var id) ? id : null;
+
     private string searchTerm = "";
     private int? minPrice = null;
     private int? maxPrice = null;
@@ -131,10 +100,8 @@
     {
         string odataUrl = BuildODataQuery();
 
-        var response = await Http.GetFromJsonAsync<List<ProductResponseDto>>(odataUrl);
-
-        FilteredProducts = response ?? new List<ProductResponseDto>();
-        TotalItems = response?.Count ?? 0;
+        FilteredProducts = await Http.GetFromJsonAsync<List<ProductResponseDto>>(odataUrl)
+                           ?? new List<ProductResponseDto>();
 
         StateHasChanged();
     }
@@ -144,10 +111,13 @@
         var filters = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
-            filters.Add($"contains(Name,'{searchTerm}')");
+        {
+            var escaped = searchTerm.Replace("'", "''");
+            filters.Add($"contains(Name,'{escaped}')");
+        }
 
-        if (!string.IsNullOrWhiteSpace(selectedCategory))
-            filters.Add($"Category/Name eq '{selectedCategory}'");
+        if (SelectedCategoryId is not null)
+            filters.Add($"Category/Id eq {SelectedCategoryId}");
 
         if (minPrice != null)
             filters.Add($"Price ge {minPrice}");
@@ -155,83 +125,33 @@
         if (maxPrice != null)
             filters.Add($"Price le {maxPrice}");
 
-        filters.Add($"Status eq 'ACTIVE'");
+        // Only show active products
+        filters.Add("Status eq 'ACTIVE'");
 
-        var filterQuery = filters.Count > 0 ? $"$filter={string.Join(" and ", filters)}&" : "";
+        string filterBlock = filters.Count > 0
+            ? $"$filter={string.Join(" and ", filters)}"
+            : "";
 
-        int skip = (CurrentPage - 1) * PageSize;
+        string query = "api/product";
 
-        return $"api/product?{filterQuery}$top={PageSize}&$skip={skip}&$count=true";
+        if (!string.IsNullOrWhiteSpace(filterBlock))
+            query += "?" + filterBlock;
+
+        return query;
     }
 
     private async Task OnFilterSubmit()
     {
-        await FilterAndLoadProductsAsync();
+        await LoadProducts();
     }
 
     private async Task ResetFilters()
     {
-        selectedCategory = string.Empty;
-        searchTerm = string.Empty;
+        selectedCategoryIdString = null; // FIXED
+        searchTerm = "";
         minPrice = null;
         maxPrice = null;
-        await FilterAndLoadProductsAsync();
-    }
 
-    private async Task FilterAndLoadProductsAsync()
-    {
-        var response = await Http.GetFromJsonAsync<List<ProductResponseDto>>("api/product");
-        var all = response ?? new List<ProductResponseDto>();
-
-        FilteredProducts = all
-            .Where(p =>
-                (string.IsNullOrWhiteSpace(selectedCategory) || p.Category?.Name == selectedCategory) &&
-                (string.IsNullOrWhiteSpace(searchTerm) || p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
-                (minPrice == null || p.Price >= minPrice) &&
-                (maxPrice == null || p.Price <= maxPrice)
-            )
-            .ToList();
-
-        StateHasChanged();
-    }
-
-    private List<PageItem> BuildPageItems()
-    {
-        var items = new List<PageItem>();
-
-        if (TotalPages <= 7)
-        {
-            for (int i = 1; i <= TotalPages; i++)
-                items.Add(new PageItem { PageNumber = i, IsCurrent = (i == CurrentPage) });
-
-            return items;
-        }
-
-        items.Add(new PageItem { PageNumber = 1, IsCurrent = (CurrentPage == 1) });
-
-        if (CurrentPage > 4)
-            items.Add(new PageItem { PageNumber = null });
-
-        int start = Math.Max(2, CurrentPage - 2);
-        int end = Math.Min(TotalPages - 1, CurrentPage + 2);
-
-        for (int i = start; i <= end; i++)
-            items.Add(new PageItem { PageNumber = i, IsCurrent = (i == CurrentPage) });
-
-        if (CurrentPage < TotalPages - 3)
-            items.Add(new PageItem { PageNumber = null });
-
-        items.Add(new PageItem { PageNumber = TotalPages, IsCurrent = (CurrentPage == TotalPages) });
-
-        return items;
-    }
-
-    private async Task ChangePage(int newPage)
-    {
-        if (newPage < 1 || newPage > TotalPages)
-            return;
-
-        CurrentPage = newPage;
         await LoadProducts();
     }
 }

@@ -3,13 +3,14 @@ using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Services;
 
 namespace PRN232Project.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
-    public class ProductController : ControllerBase
+    //[ApiController]
+    public class ProductController : ODataController
     {
         private readonly IProductService _productService;
         private readonly IMapper _mapper;
@@ -22,16 +23,11 @@ namespace PRN232Project.Controllers
 
         [HttpGet]
         [EnableQuery]
-        public async Task<ActionResult<IEnumerable<ProductResponseDto>>> GetAllProducts()
+        public IQueryable<ProductResponseDto> GetAllProducts()
         {
-            var products = await _productService.GetAllProductsAsync();
+            var products = _productService.GetAllProductsAsync().Result;
 
-            if (products == null || !products.Any())
-            {
-                return NotFound("No product found.");
-            }
-
-            return Ok(products);
+            return products.AsQueryable();
         }
 
         [HttpGet("{id:int}")]

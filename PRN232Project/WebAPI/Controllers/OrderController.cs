@@ -78,7 +78,7 @@ namespace PRN232Project.Controllers
                 return BadRequest("Invalid status data.");
             }
 
-            var order = _orderService.GetOrderByIdAsync(id);
+            var order = await _orderService.GetOrderByIdAsync(id);
 
             if (order == null)
                 return NotFound("Order not found");
