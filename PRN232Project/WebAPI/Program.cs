@@ -1,8 +1,12 @@
 using BusinessObjects;
+using DTOs;
 using Mappers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OData.Edm;
+using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using Repositories;
 using Services;
@@ -63,7 +67,12 @@ namespace WebAPI
             });
 
             builder.Services
-                .AddControllers().AddJsonOptions(options =>
+                .AddControllers()
+                .AddOData(options =>
+                    options
+                        .EnableQueryFeatures()
+                        .AddRouteComponents("api", GetEdmModel()))
+                .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
                 });
@@ -132,5 +141,14 @@ namespace WebAPI
 
             app.Run();
         }
+
+
+        static IEdmModel GetEdmModel()
+        {
+            var builder = new ODataConventionModelBuilder();
+            builder.EntitySet<ProductResponseDto>("Products");
+            return builder.GetEdmModel();
+        }
     }
+
 }

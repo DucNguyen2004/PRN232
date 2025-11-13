@@ -2,6 +2,7 @@
 using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Services;
 
 namespace PRN232Project.Controllers
@@ -20,6 +21,7 @@ namespace PRN232Project.Controllers
         }
 
         [HttpGet]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<ProductResponseDto>>> GetAllProducts()
         {
             var products = await _productService.GetAllProductsAsync();

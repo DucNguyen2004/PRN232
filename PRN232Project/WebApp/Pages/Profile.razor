@@ -1,5 +1,6 @@
 ﻿@page "/profile"
 @using DTOs
+@using Microsoft.AspNetCore.Components.Authorization
 @using WebApp.Components.Profile
 @using WebApp.Services
 @using Blazored.Toast.Services
@@ -8,6 +9,7 @@
 @inject AuthService AuthService
 @inject HttpClient Http
 @inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Trang cá nhân - Việt Coffee</PageTitle>
 
@@ -97,6 +99,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+
+        if (!isAuth)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await GetProfile();
     }
 
@@ -119,5 +129,11 @@
     {
         await AuthService.Logout();
         Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    private async Task<bool> IsUserAuthenticatedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated ?? false;
     }
 }

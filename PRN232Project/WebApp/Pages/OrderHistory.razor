@@ -1,10 +1,12 @@
 ﻿@page "/order-history"
 @using DTOs
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
 @using WebApp.Components.OrderHistory
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Lịch sử đơn hàng - Việt Coffee</PageTitle>
 
@@ -97,6 +99,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+
+        if (!isAuth)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await GetOrders();
     }
 
@@ -164,5 +174,11 @@
     {
         var culture = new CultureInfo("vi-VN");
         return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+
+    private async Task<bool> IsUserAuthenticatedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated ?? false;
     }
 }

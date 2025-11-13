@@ -2,10 +2,12 @@
 @using DTOs
 @using Components
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
 @using WebApp.Components.Cart
 @using WebApp.States
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
 
 <div class="container my-5">
     <div class="row">
@@ -34,6 +36,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+
+        if (!isAuth)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await LoadCart();
     }
 
@@ -63,5 +73,10 @@
     {
         var culture = new CultureInfo("vi-VN");
         return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+    private async Task<bool> IsUserAuthenticatedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated ?? false;
     }
 }

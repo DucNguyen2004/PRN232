@@ -1,6 +1,7 @@
 ﻿@page "/checkout"
 @using DTOs
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
 @using WebApp.States
 @using Blazored.Toast.Services
 @inject Blazored.Toast.Services.IToastService ToastService
@@ -8,6 +9,7 @@
 @inject CheckoutState CheckoutState
 @inject NavigationManager Navigation
 @inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Thanh toán - Việt Coffee</PageTitle>
 
@@ -158,6 +160,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var isAuth = await IsUserAuthenticatedAsync();
+
+        if (!isAuth)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         cartItems = CheckoutState.CartData ?? new List<CartItemResponseDto>();
         checkoutModel.Message = CheckoutState.Message ?? string.Empty;
         subtotal = cartItems?.Sum(i =>
@@ -185,109 +195,6 @@
             return;
         }
     }
-
-    // private async Task ApplyCoupon()
-    // {
-    //     if (string.IsNullOrWhiteSpace(couponCode))
-    //     {
-    //         ToastService.ShowWarning("Vui lòng nhập mã giảm giá.");
-    //         return;
-    //     }
-
-    //     var client = HttpClientFactory.CreateClient("API");
-    //     var httpResponse = await client.GetAsync($"api/coupon/{couponCode}/code");
-
-    //     if (httpResponse.IsSuccessStatusCode)
-    //     { 
-    //         var response = await httpResponse.Content.ReadFromJsonAsync<CouponResponseDto>();
-
-    //         if (response != null && response.Status == "success" && response.Data != null)
-    //         {
-    //             appliedCoupon = response.Data;
-
-    //             if (appliedCoupon.UsageUsers != null && appliedCoupon.UsageUsers.Contains(userInfo.Id))
-    //             {
-    //                 ToastService.ShowWarning("Bạn đã sử dụng mã giảm giá này trước đó.");
-    //                 appliedCoupon = null;
-    //                 return;
-    //             }
-
-    //             if (appliedCoupon.UsageUsers != null && appliedCoupon.MaxUsages <= appliedCoupon.UsageUsers.Count())
-    //             {
-    //                 ToastService.ShowWarning("Mã giảm giá đã hết lượt sử dụng.");
-    //                 appliedCoupon = null;
-    //                 return;
-    //             }
-
-    //             if (appliedCoupon.MinOrderValue.HasValue && subtotal < appliedCoupon.MinOrderValue)
-    //             {
-    //                 ToastService.ShowWarning($"Cần mua ít nhất {FormatPrice(appliedCoupon.MinOrderValue)} sản phẩm phù hợp để áp dụng mã.");
-    //                 appliedCoupon = null;
-    //                 return;
-    //             }
-
-    //             if (appliedCoupon.DateValid.HasValue && appliedCoupon.DateValid > DateTime.UtcNow)
-    //             {
-    //                 ToastService.ShowError("Mã giảm giá không hợp lệ hoặc không áp dụng được.");
-    //                 appliedCoupon = null;
-    //                 return;
-    //             }
-
-    //             if (appliedCoupon.DateExpired.HasValue && appliedCoupon.DateExpired < DateTime.UtcNow)
-    //             {
-    //                 ToastService.ShowWarning("Mã giảm giá đã hết hạn.");
-    //                 appliedCoupon = null;
-    //                 return;
-    //             }
-
-    //             checkoutModel.CouponId = appliedCoupon.Id;
-
-    //             Filter matching items
-    //             var eligibleItems = cartItems.Where(item =>
-    //                 (appliedCoupon.Product != null && item.Product.Id == appliedCoupon.Product.Id) ||
-    //                 (appliedCoupon.Category != null && item.Product.CategoryId == appliedCoupon.Category.Id)
-    //             ).ToList();
-
-    //             int eligibleSubtotal = !eligibleItems.Any() ? subtotal : eligibleItems.Sum(item =>
-    //                 (item.Product.Price + item.ProductOptions.Sum(po => po.DeltaPrice)) * item.Quantity
-    //             );
-
-    //             Calculate discount based on eligible subtotal
-    //             if (appliedCoupon.ValueType == "PERCENT")
-    //             {
-    //                 discount += (int)(eligibleSubtotal * appliedCoupon.Value / 100.0m);
-    //             }
-    //             else if (appliedCoupon.ValueType == "FIXED")
-    //             {
-    //                 discount += (int)Math.Min(appliedCoupon.Value, eligibleSubtotal);
-    //             }
-
-    //             checkoutModel.DiscountPrice = discount;
-
-    //             if (discount <= 0)
-    //             {
-    //                 ToastService.ShowWarning("Mã giảm giá không áp dụng cho sản phẩm trong giỏ hàng.");
-    //             }
-    //             else
-    //             {
-    //                 ToastService.ShowSuccess($"Áp dụng mã {appliedCoupon.Code} thành công!");
-    //             }
-    //         }
-    //         else
-    //         {
-    //             appliedCoupon = null;
-    //             discount = 0;
-    //             checkoutModel.CouponId = 0;
-    //             checkoutModel.DiscountPrice = 0;
-
-    //             ToastService.ShowError("Mã giảm giá không hợp lệ hoặc không áp dụng được.");
-    //         }
-    //     }
-    //     else
-    //     {
-    //         ToastService.ShowError("Không tìm thấy mã giảm giá.");
-    //     }
-    // }
 
     private async Task PlaceOrder()
     {
@@ -326,5 +233,10 @@
     {
         var culture = new CultureInfo("vi-VN");
         return price?.ToString("#,0", culture.NumberFormat) + "đ";
+    }
+    private async Task<bool> IsUserAuthenticatedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated ?? false;
     }
 }
