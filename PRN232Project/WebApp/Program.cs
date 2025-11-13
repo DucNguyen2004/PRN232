@@ -1,11 +1,11 @@
 using Blazored.LocalStorage;
 using Blazored.Toast;
-using FE_PRN232Project.Services;
-using FE_PRN232Project.States;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.IdentityModel.Tokens.Jwt;
+using WebApp.Services;
+using WebApp.States;
 
 namespace WebApp
 {

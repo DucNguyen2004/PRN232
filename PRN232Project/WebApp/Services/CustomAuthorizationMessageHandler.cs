@@ -1,10 +1,9 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using DTOs;
+using System.Net;
+using System.Net.Http.Headers;
 
-namespace FE_PRN232Project.Services
+namespace WebApp.Services
 {
     public class CustomAuthorizationMessageHandler : DelegatingHandler
     {

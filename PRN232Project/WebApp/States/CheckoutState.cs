@@ -1,6 +1,6 @@
 ﻿using DTOs;
 
-namespace FE_PRN232Project.States
+namespace WebApp.States
 {
     public class CheckoutState
     {
