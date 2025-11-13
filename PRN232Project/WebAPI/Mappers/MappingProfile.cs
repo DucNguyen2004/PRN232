@@ -15,6 +15,8 @@ namespace Mappers
                 .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.RoleIds.Select(id => new Role { Id = id }).ToList()))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(_ => DateTime.Now));
 
+            CreateMap<UserRequestDto, User>()
+                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.RoleIds.Select(id => new Role { Id = id }).ToList()));
             // =============== CATEGORY ===============
             CreateMap<Category, CategoryResponseDto>().ReverseMap();
 

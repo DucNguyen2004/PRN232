@@ -18,8 +18,6 @@ namespace Mappers
                 Gender = entity.Gender,
                 Status = entity.Status,
                 RoleIds = entity.Roles != null ? [.. entity.Roles.Select(role => role.Id)] : [],
-                CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt
             };
         }
 
@@ -36,8 +34,6 @@ namespace Mappers
                 Gender = dto.Gender,
                 Status = dto.Status,
                 Roles = dto.RoleIds != null ? [.. dto.RoleIds.Select(roleId => new Role { Id = roleId })] : [],
-                CreatedAt = dto.CreatedAt,
-                UpdatedAt = DateTime.Now
             };
         }
     }
