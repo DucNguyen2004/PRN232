@@ -16,48 +16,6 @@
     </div>
 </section>
 
-<!-- Featured Products Section -->
-@* <section class="featured-section">
-    <div class="container">
-        <h2 class="section-title" data-aos="fade-up">Sản phẩm nổi bật</h2>
-        
-        @if (featuredProducts == null)
-        {
-            <div class="d-flex justify-content-center">
-                <div class="spinner-border text-success" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="featured-products">
-                @foreach (var product in featuredProducts)
-                {
-                    <div class="product-card" data-aos="fade-up" data-aos-delay="@(100 * (featuredProducts.IndexOf(product) + 1))">
-                        <img src="@(product.Images.Any() ? product.Images.First() : "images/default-img.png")" 
-                             alt="@product.Name" class="product-img">
-                        <div class="product-info">
-                            <h3 class="product-title">@product.Name</h3>
-                            <div class="product-category">@product.Category?.Name</div>
-                            <div class="d-flex justify-content-between align-items-center mt-2">
-                                <div class="product-price">@FormatPrice(product.Price)</div>
-                                <button class="btn btn-add-cart">
-                                    <i class="bi bi-cart-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-            
-            <div class="text-center mt-5" data-aos="fade-up">
-                <a href="/menu" class="btn btn-accent">Xem tất cả sản phẩm</a>
-            </div>
-        }
-    </div>
-</section> *@
-
 <!-- About Section -->
 <section class="about-section">
     <div class="container">

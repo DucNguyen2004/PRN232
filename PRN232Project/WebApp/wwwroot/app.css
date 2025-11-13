@@ -1211,33 +1211,3 @@ code {
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
-
-/* Responsive admin styles */
-@media (max-width: 768px) {
-    .page-wrapper {
-        padding: 20px;
-    }
-
-    .admin-stat-value {
-        font-size: 1.5rem;
-    }
-
-    .admin-card-icon {
-        font-size: 1.8rem;
-    }
-}
-
-/* Responsive table for mobile */
-@media (max-width: 767.98px) {
-    .table-wrapper table {
-        min-width: 800px;
-    }
-
-    .sticky-col.left {
-        left: 0;
-    }
-
-    .sticky-col.right {
-        right: 0;
-    }
-}

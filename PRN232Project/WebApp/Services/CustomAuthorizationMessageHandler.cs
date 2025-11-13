@@ -8,12 +8,12 @@ namespace WebApp.Services
     public class CustomAuthorizationMessageHandler : DelegatingHandler
     {
         private readonly ILocalStorageService _localStorage;
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public CustomAuthorizationMessageHandler(ILocalStorageService localStorage)
+        public CustomAuthorizationMessageHandler(ILocalStorageService localStorage, IHttpClientFactory httpClientFactory)
         {
             _localStorage = localStorage;
-            _httpClient = new HttpClient { BaseAddress = new Uri("https://localhost:7041/") }; // Replace with API URL
+            _httpClientFactory = httpClientFactory;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -33,8 +33,12 @@ namespace WebApp.Services
 
                 if (!string.IsNullOrEmpty(refreshToken))
                 {
-                    // Attempt refresh
-                    var refreshResponse = await _httpClient.PostAsJsonAsync("api/auth/refresh", refreshToken);
+                    var refreshClient = _httpClientFactory.CreateClient("API");
+
+                    var refreshResponse = await refreshClient.PostAsJsonAsync(
+                        "api/auth/refresh",
+                        new { refreshToken },
+                        cancellationToken);
 
                     if (refreshResponse.IsSuccessStatusCode)
                     {

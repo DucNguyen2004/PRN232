@@ -17,16 +17,14 @@ namespace WebApp
             builder.RootComponents.Add<App>("#app");
             builder.RootComponents.Add<HeadOutlet>("head::after");
 
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5152/") });
-
             JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
             builder.Services.AddBlazoredLocalStorage();
-            builder.Services.AddAuthorizationCore(options =>
-            {
-                // This is for development purposes only - allows accessing admin pages without authorization
-                options.AddPolicy("AllowAnonymous", policy => policy.RequireAssertion(_ => true));
-            });
+            //builder.Services.AddAuthorizationCore(options =>
+            //{
+            //    // This is for development purposes only - allows accessing admin pages without authorization
+            //    options.AddPolicy("AllowAnonymous", policy => policy.RequireAssertion(_ => true));
+            //});
             builder.Services.AddBlazoredToast();
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped<AuthService>();
@@ -36,9 +34,9 @@ namespace WebApp
 
             builder.Services.AddSingleton<CheckoutState>();
 
-            builder.Services.AddHttpClient("AuthorizedAPI", client =>
+            builder.Services.AddHttpClient("API", client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7041/");
+                client.BaseAddress = new Uri("https://localhost:5152/");
             })
             .AddHttpMessageHandler<CustomAuthorizationMessageHandler>();
 
