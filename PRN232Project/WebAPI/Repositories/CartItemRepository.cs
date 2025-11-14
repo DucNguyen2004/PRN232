@@ -12,7 +12,7 @@ namespace Repositories
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<IEnumerable<CartItem>> GetAllCartItems(int userId) // change parameter ?
+        public async Task<IEnumerable<CartItem>> GetAllCartItems(int userId)
         {
             return await _context.CartItems
                 .Where(c => c.UserId == userId)

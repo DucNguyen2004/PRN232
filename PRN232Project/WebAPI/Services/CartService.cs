@@ -18,7 +18,7 @@ namespace Services
             _mapper = mapper;
         }
 
-        public async Task<UserCartResponseDto> GetAllCartItems(int userId) // change parameter ?
+        public async Task<UserCartResponseDto> GetAllCartItems(int userId)
         {
             var cartItems = await _cartItemRepository.GetAllCartItems(userId);
 

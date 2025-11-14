@@ -24,11 +24,6 @@ namespace BusinessObjects
 
         public string Message { get; set; }
 
-        public int? CouponId { get; set; }
-
-        [ForeignKey("CouponId")]
-        public Coupon? Coupon { get; set; }
-
         public int DiscountPrice { get; set; }
 
         [Required]

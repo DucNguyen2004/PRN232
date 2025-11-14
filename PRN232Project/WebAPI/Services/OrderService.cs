@@ -51,18 +51,6 @@ namespace Services
 
         public async Task<Order> PlaceOrderAsync(OrderRequestDto dto, int userId)
         {
-            // increase sold quantity for each product in the order
-            //foreach (var detail in dto.OrderDetails)
-            //{
-            //    var product = await _productRepository.GetByIdAsync(detail.ProductId);
-            //    if (product != null)
-            //    {
-            //        product.Sold += detail.Quantity;
-            //        await _productRepository.UpdateAsync(product.Id, product);
-            //    }
-            //}
-
-            // increase coupon usage count if applicable
             if (dto.CouponId > 0)
             {
                 await _couponUsageRepository.AddUsageAsync(dto.CouponId, userId);
@@ -76,7 +64,6 @@ namespace Services
                 var newDetail = newOrder.OrderDetails.ElementAt(i);
                 newDetail.ProductOptions = await _productOptionRepository.GetByIdsAsync(detailDto.ProductOptionIds, detailDto.ProductId);
             }
-            //newOrder.UserId = userId;
 
             await _cartService.ClearCart(userId);
 

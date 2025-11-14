@@ -57,7 +57,6 @@
 @code {
     private async Task HandleLogout()
     {
-        await LocalStorage.ClearAsync();
         await AuthService.Logout();
         Navigation.NavigateTo("/login", forceLoad: true);
     }

@@ -41,6 +41,7 @@ namespace WebApp.Services
         {
             await _localStorage.RemoveItemAsync("accessToken");
             await _localStorage.RemoveItemAsync("refreshToken");
+            await _localStorage.RemoveItemAsync("userId");
             _authStateProvider.NotifyUserLogout();
         }
 

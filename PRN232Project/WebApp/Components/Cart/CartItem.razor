@@ -3,16 +3,13 @@
 @inject IHttpClientFactory HttpClientFactory
 
 <div class="d-flex mb-4 align-items-start border-bottom pb-3">
-    <!-- Image -->
     <div>
         <img src="@($"images/{Item?.Product?.Image}")" alt="@Item?.Product?.Name" style="width: 100px;" class="rounded" />
     </div>
 
-    <!-- Info -->
     <div class="ms-3 flex-grow-1">
         <h5 class="mb-1">@Item?.Product?.Name</h5>
 
-        <!-- Product Options -->
         @if (Item?.ProductOptions != null && Item.ProductOptions.Any())
         {
             <ul class="mb-2 ps-3">
@@ -24,7 +21,6 @@
             </ul>
         }
 
-        <!-- Quantity & Remove -->
         <div class="d-flex align-items-center gap-2">
             <button class="btn btn-outline-secondary btn-sm"
                     @onclick="() => UpdateQuantity(Item.Id, Item.Quantity - 1)">
@@ -44,7 +40,6 @@
         </div>
     </div>
 
-    <!-- Total -->
     <div class="text-end" style="min-width: 80px;">
         <strong>@FormatPrice(Total)</strong>
     </div>

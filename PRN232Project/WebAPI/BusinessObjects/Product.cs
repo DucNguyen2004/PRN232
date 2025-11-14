@@ -38,7 +38,6 @@ namespace BusinessObjects
 
         // One-to-Many relationships
         public ICollection<CartItem> CartItems { get; set; }
-        public ICollection<WishlistItem> WishlistItems { get; set; }
         public ICollection<ProductImage> ProductImages { get; set; }
         public ICollection<ProductOption> ProductOptions { get; set; }
     }

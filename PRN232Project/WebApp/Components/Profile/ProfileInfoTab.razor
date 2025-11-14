@@ -89,10 +89,8 @@
             editContext = new EditContext(UserProfile);
             messageStore = new ValidationMessageStore(editContext);
 
-            // Subscribe to field change events to clear custom validation messages
             editContext.OnFieldChanged += OnFieldChanged;
 
-            // Keep a copy of original values for cancel functionality
             originalProfile = new UserResponseDto
             {
                 Username = UserProfile.Username,
@@ -112,10 +110,8 @@
     {
         if (messageStore is null) return;
 
-        // Clear custom validation messages for the changed field
         messageStore.Clear(e.FieldIdentifier);
 
-        // Specifically clear related validation messages when these fields change
         if (e.FieldIdentifier.FieldName == nameof(UserProfile.Email))
         {
             messageStore.Clear(() => UserProfile.Email);
@@ -135,7 +131,6 @@
     {
         isEditing = true;
 
-        // Clear any existing validation messages when starting to edit
         if (messageStore is not null)
         {
             messageStore.Clear();
@@ -145,14 +140,12 @@
 
     private async Task CancelEditing()
     {
-        // Restore original values
         UserProfile.Fullname = originalProfile.Fullname;
         UserProfile.Email = originalProfile.Email;
         UserProfile.Phone = originalProfile.Phone;
         UserProfile.Dob = originalProfile.Dob;
         UserProfile.Gender = originalProfile.Gender;
 
-        // Clear validation messages
         if (messageStore is not null)
         {
             messageStore.Clear();
@@ -169,14 +162,11 @@
 
         if (editContext is null || messageStore is null) return;
 
-        // Clear all custom validation messages at the start
         messageStore.Clear();
         editContext.NotifyValidationStateChanged();
 
-        // Small delay to ensure UI updates
         await Task.Delay(1);
 
-        // Force validation to run again
         var isValid = editContext.Validate();
 
         if (!isValid)
@@ -185,7 +175,6 @@
             return;
         }
 
-        // Check for duplicate email/phone (excluding current user)
         try
         {
             var checkResponse = await Http.GetFromJsonAsync<IsUserExistedDto>(
@@ -210,7 +199,6 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error checking duplicates: {ex.Message}");
-            // Continue with save if check fails
         }
 
         var client = HttpClientFactory.CreateClient("API");
@@ -236,7 +224,6 @@
             {
                 ToastService.ShowSuccess("Cập nhật thông tin thành công!");
 
-                // Update original profile with new values
                 originalProfile.Fullname = UserProfile.Fullname;
                 originalProfile.Email = UserProfile.Email;
                 originalProfile.Phone = UserProfile.Phone;

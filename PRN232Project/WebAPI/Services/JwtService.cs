@@ -38,8 +38,6 @@ namespace Services
             if (userAccount == null)
                 return null;
 
-            // TODO: Add password hash comparison here
-
             return await GenerateJwtToken(userAccount);
         }
 

@@ -116,23 +116,6 @@
                         <span class="text-accent fs-5">@FormatPrice(total)</span>
                     </div>
                     
-                    @* <div class="mt-3">
-                        <div class="input-group">
-                            <input type="text" class="form-control" placeholder="Mã giảm giá" @bind="couponCode" />
-                            <button class="btn btn-outline-secondary" type="button" @onclick="ApplyCoupon">Áp dụng</button>
-                        </div>
-                    </div> *@
-                    
-                    @* @if (appliedCoupon != null)
-                    {
-                        <div class="text-success mt-2">
-                            Mã <strong>@appliedCoupon.Code</strong> đã được áp dụng:
-                            @(appliedCoupon.ValueType == "PERCENT"
-                                                    ? $"{appliedCoupon.Value}%"
-                                                    : FormatPrice((int?)appliedCoupon.Value))
-                        </div>
-                    } *@
-
                     <div class="mt-4">
                         <a href="/cart" class="text-decoration-none">
                             <i class="bi bi-arrow-left me-1"></i> Quay lại giỏ hàng
@@ -154,7 +137,6 @@
     private int total => subtotal - discount;
 
     private string couponCode = string.Empty;
-    // private CouponResponseDto? appliedCoupon;
 
     private DateTime dobValue = DateTime.Now;
 
@@ -182,17 +164,6 @@
         if (response is not null)
         {
             userInfo = response;
-        }
-
-        // SINH NHẬT
-        if (userInfo.Dob.HasValue &&
-            userInfo.Dob.Value.Day == dobValue.Day &&
-            userInfo.Dob.Value.Month == dobValue.Month)
-        {
-            discount = (int)(subtotal * 0.1m); // 10%
-            checkoutModel.DiscountPrice = discount;
-            ToastService.ShowSuccess("Chúc mừng sinh nhật! Bạn đã nhận được giảm giá 10%.");
-            return;
         }
     }
 

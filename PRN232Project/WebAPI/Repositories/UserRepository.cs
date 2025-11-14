@@ -16,7 +16,6 @@ namespace Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
@@ -26,7 +25,6 @@ namespace Repositories
             if (string.IsNullOrWhiteSpace(email)) throw new ArgumentException("Email cannot be null or empty.", nameof(email));
             return await _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
@@ -36,7 +34,6 @@ namespace Repositories
             if (string.IsNullOrWhiteSpace(username)) throw new ArgumentException("Username cannot be null or empty.", nameof(username));
             return await _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
@@ -46,7 +43,6 @@ namespace Repositories
             if (string.IsNullOrWhiteSpace(phone)) throw new ArgumentException("Role name cannot be null or empty.", nameof(phone));
             return await _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .FirstOrDefaultAsync(u => u.Phone == phone);
         }
@@ -55,7 +51,6 @@ namespace Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .ToListAsync();
         }
@@ -64,7 +59,6 @@ namespace Repositories
         {
             var query = _context.Users
                 .Include(u => u.Roles)
-                .Include(u => u.Addresses)
                 .Include(u => u.Orders)
                 .AsQueryable();
 
