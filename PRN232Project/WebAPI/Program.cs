@@ -90,8 +90,6 @@ namespace WebAPI
             builder.Services.AddScoped<IProductOptionRepository, ProductOptionRepository>();
             builder.Services.AddScoped<ICartItemRepository, CartItemRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<ICouponUsageRepository, CouponUsageRepository>();
-
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IProductService, ProductService>();

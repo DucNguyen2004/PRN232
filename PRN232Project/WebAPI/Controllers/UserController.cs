@@ -2,6 +2,7 @@
 using BusinessObjects;
 using DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Services;
 using System.Security.Claims;
 
@@ -21,6 +22,7 @@ namespace PRN232Project.Controllers
         }
 
         [HttpGet]
+        [EnableQuery]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllUsers()
         {
             var users = await _userService.GetAllUsersAsync();
@@ -31,17 +33,6 @@ namespace PRN232Project.Controllers
             }
 
             return Ok(users);
-        }
-
-        [HttpGet("paged")]
-        public async Task<ActionResult<PaginationResponseDto<UserResponseDto>>> GetPagedUsers([FromQuery] PaginationRequestDto request)
-        {
-            var result = await _userService.GetUsersPagedAsync(request);
-            if (result == null || !result.Items.Any())
-            {
-                return NotFound("No user found.");
-            }
-            return Ok(result);
         }
 
         [HttpGet("profile")]

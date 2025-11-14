@@ -2,6 +2,7 @@
 using DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Services;
 using System.Security.Claims;
 
@@ -33,10 +34,11 @@ namespace PRN232Project.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OrderResponseDto>>> GetAllOrders()
+        [EnableQuery]
+        public async Task<ActionResult<IQueryable<OrderResponseDto>>> GetAllOrders()
         {
             var orders = await _orderService.GetAllOrdersAsync();
-            return Ok(orders);
+            return Ok(orders.AsQueryable());
         }
 
         [HttpGet("user")]

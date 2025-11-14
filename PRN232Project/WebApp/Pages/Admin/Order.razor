@@ -11,6 +11,7 @@
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
 
 <div class="page-wrapper">
     <h2 class="admin-section-title mb-4">Quản lý đơn hàng</h2>
@@ -249,20 +250,18 @@
 </div>
 
 @code {
-    private List<OrderResponseDto> AllOrders = new();
     private PaginationResponseDto<OrderResponseDto> PagedOrders = new();
+    private OrderResponseDto? selectedOrder;
 
     private int CurrentPage = 1;
     private int PageSize = 10;
+
     private string searchTerm = "";
     private string selectedStatus = "";
     private string sortField = "OrderDate";
     private string sortDirection = "desc";
+
     private bool loading = true;
-
-    private OrderResponseDto? selectedOrder;
-
-    [Inject] private IHttpClientFactory HttpClientFactory { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -270,61 +269,85 @@
         if (role != "admin")
         {
             Navigation.NavigateTo("/");
+            return;
         }
 
-        loading = true;
         await LoadOrders();
-        loading = false;
     }
 
     private async Task LoadOrders()
     {
-        var client = HttpClientFactory.CreateClient("API");
-        var response = await client.GetFromJsonAsync<List<OrderResponseDto>>($"api/order");
-        AllOrders = response ?? new();
-        HandleFilters();
+        loading = true;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("API");
+
+            string odataQuery = BuildODataQuery();
+
+            var response = await client.GetFromJsonAsync<List<OrderResponseDto>>(
+                $"api/order{odataQuery}"
+            );
+            
+
+            if (response != null)
+            {
+                var totalItems = response.Count;
+                var totalPages = (int)Math.Ceiling(totalItems / (double)PageSize);
+
+                PagedOrders = new PaginationResponseDto<OrderResponseDto>
+                {
+                    Items = response,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages
+                }; ;
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
     }
 
-    private void HandleFilters()
+    private string BuildODataQuery()
     {
-        IEnumerable<OrderResponseDto> filtered = AllOrders;
+        List<string> filters = new();
+        string query = "?";
 
+        // Search by customer full name
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var lower = searchTerm.ToLower();
-            filtered = filtered.Where(o => o.User.Fullname.ToLower().Contains(lower));
+            filters.Add($"contains(tolower(User/Fullname), '{searchTerm.ToLower()}')");
         }
 
+        // Filter by status
         if (!string.IsNullOrWhiteSpace(selectedStatus))
         {
-            filtered = filtered.Where(o => o.OrderStatus.Equals(selectedStatus, StringComparison.OrdinalIgnoreCase));
+            filters.Add($"OrderStatus eq '{selectedStatus}'");
         }
 
-        filtered = sortField switch
+        // Append filters
+        if (filters.Any())
         {
-            "TotalPrice" => sortDirection == "asc"
-                ? filtered.OrderBy(o => o.OrderDetails
-                      .Sum(i => (i.Price + (i.ProductOptions?.Sum(po => po.DeltaPrice) ?? 0)) * i.Quantity))
-                : filtered.OrderByDescending(o => o.OrderDetails
-                      .Sum(i => (i.Price + (i.ProductOptions?.Sum(po => po.DeltaPrice) ?? 0)) * i.Quantity)),
-            "OrderDate" => sortDirection == "asc" ? filtered.OrderBy(o => o.OrderDate) : filtered.OrderByDescending(o => o.OrderDate),
-            _ => sortDirection == "asc" ? filtered.OrderBy(o => o.Id) : filtered.OrderByDescending(o => o.Id),
+            query += "$filter=" + string.Join(" and ", filters) + "&";
+        }
+
+        // ORDER BY
+        string orderby = sortField switch
+        {
+            "TotalPrice" => $"TotalPrice {sortDirection}",
+            "OrderDate" => $"OrderDate {sortDirection}",
+            _ => $"Id {sortDirection}"
         };
 
-        var totalItems = filtered.Count();
-        var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+        query += $"$orderby={orderby}&";
 
-        var items = filtered.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+        // Pagination
+        int skip = (CurrentPage - 1) * PageSize;
+        query += $"$skip={skip}&$top={PageSize}";
 
-        PagedOrders = new PaginationResponseDto<OrderResponseDto>
-        {
-            Items = items,
-            TotalItems = totalItems,
-            TotalPages = totalPages
-        };
+        return query;
     }
-
-    private void ToggleSortDirection() => sortDirection = sortDirection == "asc" ? "desc" : "asc";
 
     private async Task ApplyFilters()
     {
@@ -332,74 +355,26 @@
         await LoadOrders();
     }
 
-    private async Task ConfirmOrder(int orderId)
-    {
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xác nhận đơn hàng này không?");
-        if (!confirmed) return;
-
-        var client = HttpClientFactory.CreateClient("API");
-        var response = await client.PutAsJsonAsync($"api/order/{orderId}", "SHIPPING");
-        if (response.IsSuccessStatusCode)
-        {
-            ToastService.ShowSuccess("Đơn hàng đã được xác nhận");
-            await LoadOrders();
-            selectedOrder = null;
-        } else
-        {
-            ToastService.ShowError("Không thể xác nhận đơn hàng. Vui lòng thử lại sau.");
-        }
-    }
-
-    private async Task CancelOrder(int orderId)
-    {
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn huỷ đơn hàng này không?");
-        if (!confirmed) return;
-
-        var client = HttpClientFactory.CreateClient("API");
-        var response = await client.PutAsJsonAsync($"api/order/{orderId}", "CANCELLED");
-        if (response.IsSuccessStatusCode)
-        {
-            ToastService.ShowSuccess("Đơn hàng đã được hủy");
-            await LoadOrders();
-            selectedOrder = null;
-        } else
-        {
-            ToastService.ShowError("Không thể hủy đơn hàng. Vui lòng thử lại sau.");
-        }
-    }
-
-    private async Task MarkAsDelivered(int orderId)
-    {
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xác nhận đã giao đơn hàng này không?");
-        if (!confirmed) return;
-
-        var client = HttpClientFactory.CreateClient("API");
-        var response = await client.PutAsJsonAsync($"api/order/{orderId}", "COMPLETED");
-        if (response.IsSuccessStatusCode)
-        {
-            ToastService.ShowSuccess("Đơn hàng đã được đánh dấu là đã giao");
-            await LoadOrders();
-            selectedOrder = null;
-        } else
-        {
-			ToastService.ShowError("Không thể đánh dấu đơn hàng là đã giao. Vui lòng thử lại sau.");
-        }
-    }
-
     private void ResetFilters()
     {
-        searchTerm = string.Empty;
-        selectedStatus = string.Empty;
+        searchTerm = "";
+        selectedStatus = "";
         sortField = "OrderDate";
         sortDirection = "desc";
         CurrentPage = 1;
 
-        HandleFilters();
+        _ = LoadOrders();
+    }
+
+    private void ToggleSortDirection()
+    {
+        sortDirection = sortDirection == "asc" ? "desc" : "asc";
     }
 
     private async Task GoToPage(int page)
     {
-        if (page < 1 || page > PagedOrders.TotalPages) return;
+        if (page < 1 || page > (PagedOrders?.TotalPages ?? 1)) return;
+
         CurrentPage = page;
         await LoadOrders();
     }
@@ -409,36 +384,82 @@
         selectedOrder = order;
     }
 
-    private string GetStatusBadge(string status)
+    private async Task ConfirmOrder(int orderId)
     {
-        return status switch
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn muốn xác nhận đơn hàng?");
+        if (!confirmed) return;
+
+        var client = HttpClientFactory.CreateClient("API");
+        var res = await client.PutAsJsonAsync($"api/order/{orderId}", "SHIPPING");
+
+        if (res.IsSuccessStatusCode)
         {
-            "COMPLETED" => "bg-success",
-            "PENDING" => "bg-primary",
-            "SHIPPING" => "bg-info",
-            "CANCELLED" => "bg-danger",
-            _ => "bg-secondary"
-        };
+            ToastService.ShowSuccess("Đơn hàng đã được xác nhận.");
+            selectedOrder = null;
+            await LoadOrders();
+        }
+        else ToastService.ShowError("Lỗi khi xác nhận đơn hàng.");
     }
 
-    private string GetStatusText(string status)
+    private async Task CancelOrder(int orderId)
     {
-        return status switch
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn chắc chắn muốn hủy đơn?");
+        if (!confirmed) return;
+
+        var client = HttpClientFactory.CreateClient("API");
+        var res = await client.PutAsJsonAsync($"api/order/{orderId}", "CANCELLED");
+
+        if (res.IsSuccessStatusCode)
         {
-            "COMPLETED" => "Đã giao",
-            "PENDING" => "Chờ xác nhận",
-            "SHIPPING" => "Đang giao",
-            "CANCELLED" => "Đã hủy",
-            _ => "Không xác định"
-        };
+            ToastService.ShowSuccess("Đơn hàng đã hủy.");
+            selectedOrder = null;
+            await LoadOrders();
+        }
+        else ToastService.ShowError("Không thể hủy đơn hàng.");
     }
+
+    private async Task MarkAsDelivered(int orderId)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Xác nhận đơn đã giao?");
+        if (!confirmed) return;
+
+        var client = HttpClientFactory.CreateClient("API");
+        var res = await client.PutAsJsonAsync($"api/order/{orderId}", "COMPLETED");
+
+        if (res.IsSuccessStatusCode)
+        {
+            ToastService.ShowSuccess("Đơn hàng đã giao.");
+            selectedOrder = null;
+            await LoadOrders();
+        }
+        else ToastService.ShowError("Không thể cập nhật trạng thái đơn hàng.");
+    }
+
+    private string GetStatusBadge(string status) => status switch
+    {
+        "COMPLETED" => "bg-success",
+        "PENDING" => "bg-primary",
+        "SHIPPING" => "bg-info",
+        "CANCELLED" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "COMPLETED" => "Đã giao",
+        "PENDING" => "Chờ xác nhận",
+        "SHIPPING" => "Đang giao",
+        "CANCELLED" => "Đã hủy",
+        _ => "Không rõ"
+    };
 
     private string FormatPrice(int? price)
     {
         var culture = new CultureInfo("vi-VN");
-        return price?.ToString("#,0", culture.NumberFormat) + "đ";
+        return price?.ToString("#,0", culture) + "đ";
     }
 }
+
 
 <style>
     .action-btn {

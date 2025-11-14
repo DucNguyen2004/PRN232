@@ -11,7 +11,6 @@ namespace Services
         private readonly IOrderRepository _orderRepository;
         private readonly IProductRepository _productRepository;
         private readonly IProductOptionRepository _productOptionRepository;
-        private readonly ICouponUsageRepository _couponUsageRepository;
         private readonly ICartService _cartService;
         private readonly IMapper _mapper;
 
@@ -19,14 +18,12 @@ namespace Services
             IOrderRepository orderRepository,
             IProductRepository productRepository,
             IProductOptionRepository productOptionRepository,
-            ICouponUsageRepository couponUsageRepository,
             ICartService cartService,
             IMapper mapper)
         {
             _orderRepository = orderRepository;
             _productRepository = productRepository;
             _productOptionRepository = productOptionRepository;
-            _couponUsageRepository = couponUsageRepository ?? throw new ArgumentNullException(nameof(couponUsageRepository));
             _cartService = cartService;
             _mapper = mapper;
         }
@@ -51,10 +48,6 @@ namespace Services
 
         public async Task<Order> PlaceOrderAsync(OrderRequestDto dto, int userId)
         {
-            if (dto.CouponId > 0)
-            {
-                await _couponUsageRepository.AddUsageAsync(dto.CouponId, userId);
-            }
 
             var newOrder = _mapper.Map<Order>(dto);
             newOrder.UserId = userId;

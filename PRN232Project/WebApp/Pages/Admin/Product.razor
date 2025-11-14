@@ -167,7 +167,6 @@
 
 @code {
     private List<CategoryResponseDto> Categories = new();
-    private List<ProductResponseDto> AllProducts = new();
     private PaginationResponseDto<ProductResponseDto> PagedProducts = new();
 
     private int CurrentPage = 1;
@@ -190,91 +189,156 @@
         if (role != "admin")
         {
             Navigation.NavigateTo("/");
+            return;
         }
 
         loading = true;
-        await LoadData();
+        await LoadInitialData();
         loading = false;
     }
 
-    private async Task LoadData()
+    private async Task LoadInitialData()
     {
-        var productRes = await Http.GetFromJsonAsync<List<ProductResponseDto>>("api/product");
-        var categoryRes = await Http.GetFromJsonAsync<List<CategoryResponseDto>>("api/category");
-        AllProducts = productRes ?? new();
-        Categories = categoryRes ?? new();
-        HandleFilters();
+        // Danh mục không dùng OData
+        Categories = await Http.GetFromJsonAsync<List<CategoryResponseDto>>("api/category") ?? new();
+
+        // Lần đầu load dữ liệu sản phẩm dùng OData
+        await LoadProductsFromOData();
     }
 
-    private void HandleFilters()
+    private async Task LoadProductsFromOData()
     {
-        IEnumerable<ProductResponseDto> filtered = AllProducts;
+        loading = true;
 
-        if (!string.IsNullOrWhiteSpace(searchTerm))
+        try
         {
-            var lower = searchTerm.ToLower();
-            filtered = filtered.Where(p => p.Name.ToLower().Contains(lower));
+            var filterParts = new List<string>();
+
+            // Search theo tên
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lower = searchTerm.ToLower();
+                filterParts.Add($"contains(tolower(Name), '{lower}')");
+            }
+
+            // Lọc theo status
+            if (!string.IsNullOrWhiteSpace(selectedStatus))
+            {
+                filterParts.Add($"Status eq '{selectedStatus}'");
+            }
+
+            // Lọc theo category
+            if (selectedCategoryId.HasValue)
+            {
+                filterParts.Add($"Category/Id eq {selectedCategoryId.Value}");
+            }
+
+            var queryParams = new List<string>();
+
+            if (filterParts.Any())
+            {
+                var filterString = string.Join(" and ", filterParts);
+                queryParams.Add($"$filter={filterString}");
+            }
+
+            // Sort
+            var orderByField = sortField switch
+            {
+                "Price" => "Price",
+                "CreatedAt" => "CreateAt",
+                _ => "Name"
+            };
+            queryParams.Add($"$orderby={orderByField} {sortDirection}");
+
+            // Phân trang
+            var skip = (CurrentPage - 1) * PageSize;
+            queryParams.Add($"$skip={skip}");
+            queryParams.Add($"$top={PageSize}");
+            queryParams.Add("$count=true");
+
+            var queryString = string.Join("&", queryParams);
+
+            // Nếu route OData của bạn là /odata/Products thì đổi lại URL bên dưới
+            var url = $"api/product?{queryString}";
+
+            Console.WriteLine($"OData query: {url}");
+
+            var result = await Http.GetFromJsonAsync<List<ProductResponseDto>>(url);
+
+            if (result != null)
+            {
+                var items = result ?? new List<ProductResponseDto>();
+                var totalItems = result.Count;
+                var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+
+                if (totalPages == 0) totalPages = 1;
+
+                PagedProducts = new PaginationResponseDto<ProductResponseDto>
+                {
+                    Items = items,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages
+                };
+            }
+            else
+            {
+                PagedProducts = new PaginationResponseDto<ProductResponseDto>
+                {
+                    Items = new List<ProductResponseDto>(),
+                    TotalItems = 0,
+                    TotalPages = 1
+                };
+            }
         }
-
-        if (!string.IsNullOrWhiteSpace(selectedStatus))
+        catch (Exception ex)
         {
-            filtered = filtered.Where(p => p.Status.Equals(selectedStatus, StringComparison.OrdinalIgnoreCase));
+            Console.WriteLine($"Error loading products via OData: {ex.Message}");
+            PagedProducts = new PaginationResponseDto<ProductResponseDto>
+            {
+                Items = new List<ProductResponseDto>(),
+                TotalItems = 0,
+                TotalPages = 1
+            };
         }
-
-        if (selectedCategoryId.HasValue)
+        finally
         {
-            filtered = filtered.Where(p => p.Category?.Id == selectedCategoryId);
+            loading = false;
+            StateHasChanged();
         }
-
-        filtered = sortField switch
-        {
-            "Price" => sortDirection == "asc" ? filtered.OrderBy(p => p.Price) : filtered.OrderByDescending(p => p.Price),
-            "CreatedAt" => sortDirection == "asc" ? filtered.OrderBy(p => p.CreateAt) : filtered.OrderByDescending(p => p.CreateAt),
-            "Sold" => sortDirection == "asc" ? filtered.OrderBy(p => p.Sold) : filtered.OrderByDescending(p => p.Sold),
-            _ => sortDirection == "asc" ? filtered.OrderBy(p => p.Name) : filtered.OrderByDescending(p => p.Name),
-        };
-
-        var totalItems = filtered.Count();
-        var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
-
-        var items = filtered.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
-
-        PagedProducts = new PaginationResponseDto<ProductResponseDto>
-        {
-            Items = items,
-            TotalItems = totalItems,
-            TotalPages = totalPages
-        };
     }
 
     private async Task ApplyFilters()
     {
         CurrentPage = 1;
-        HandleFilters();
-        await Task.CompletedTask;
+        await LoadProductsFromOData();
     }
 
     private void ResetFilters()
     {
         searchTerm = string.Empty;
         selectedStatus = string.Empty;
+        selectedCategoryId = null;
         sortField = "Name";
         sortDirection = "asc";
         CurrentPage = 1;
 
-        HandleFilters();
+        _ = LoadProductsFromOData();
     }
 
-    private void ToggleSortDirection() => sortDirection = sortDirection == "asc" ? "desc" : "asc";
+    private void ToggleSortDirection()
+    {
+        sortDirection = sortDirection == "asc" ? "desc" : "asc";
+        _ = LoadProductsFromOData();
+    }
 
     private async Task GoToPage(int page)
     {
-        if (page >= 1 && page <= PagedProducts.TotalPages)
-        {
-            CurrentPage = page;
-            HandleFilters();
-            await Task.CompletedTask;
-        }
+        if (page < 1) return;
+        if (PagedProducts.TotalPages == 0) return;
+        if (page > PagedProducts.TotalPages) return;
+
+        CurrentPage = page;
+        await LoadProductsFromOData();
     }
 
     private string GetStatusBadgeClass(string status) => status.ToUpper() switch
@@ -292,9 +356,11 @@
             CategoryId = 0,
             CreateAt = DateTime.Now,
             Status = "INACTIVE",
-            Options = new List<ProductOptionRequestDto>()
+            Options = new List<ProductOptionRequestDto>(),
+            Images = new List<string>()
         };
-		EditingProductId = 0;
+
+        EditingProductId = 0;
         IsEditMode = false;
         IsModalVisible = true;
     }
@@ -310,15 +376,13 @@
             CreateAt = product.CreateAt,
             Status = product.Status,
             Images = product.Images?.ToList() ?? new(),
-            Options = product.Options?.Select(
-                o => new ProductOptionRequestDto { 
-                    OptionValueId = o.Id, 
-                    DeltaPrice = o.DeltaPrice 
+            Options = product.Options?.Select(o =>
+                new ProductOptionRequestDto
+                {
+                    OptionValueId = o.Id,
+                    DeltaPrice = o.DeltaPrice
                 }).ToList() ?? new()
         };
-
-        var json = JsonSerializer.Serialize(EditingProduct);
-        Console.WriteLine($"ProductRequestDto: {json}");
 
         EditingProductId = product.Id;
         IsEditMode = true;
@@ -327,30 +391,31 @@
 
     private async Task SaveProduct(ProductRequestDto dto)
     {
-        // var json = JsonSerializer.Serialize(dto);
-        // Console.WriteLine($"ProductRequestDto: {json}");
+        HttpResponseMessage response;
 
-        HttpResponseMessage? response = null;
         if (EditingProductId > 0)
         {
             response = await Http.PutAsJsonAsync($"api/product/{EditingProductId}", dto);
         }
         else
         {
-            response = await Http.PostAsJsonAsync($"api/product", dto);
+            response = await Http.PostAsJsonAsync("api/product", dto);
         }
 
         if (response.IsSuccessStatusCode)
         {
             ToastService.ShowSuccess("Cập nhật sản phẩm thành công!");
-			EditingProduct = new ProductRequestDto();
-			EditingProductId = 0;
-            await LoadData();
+            EditingProduct = new ProductRequestDto();
+            EditingProductId = 0;
+            IsModalVisible = false;
+
+            await LoadProductsFromOData();
         }
         else
         {
             var errorContent = await response.Content.ReadAsStringAsync();
-            ToastService.ShowError($"Cập nhật sản phẩm thất bại");
+            Console.WriteLine(errorContent);
+            ToastService.ShowError("Cập nhật sản phẩm thất bại");
         }
     }
 

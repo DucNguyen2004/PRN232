@@ -9,7 +9,6 @@
 @inject NavigationManager Navigation
 @inject Blazored.Toast.Services.IToastService ToastService
 @layout AdminLayout
-@* @attribute [Authorize(Roles = "admin")] *@
 @inject IHttpClientFactory HttpClientFactory
 @inject HttpClient Http
 @inject IJSRuntime JS
@@ -17,7 +16,7 @@
 <div class="page-wrapper">
     <div class="container">
         <h3 class="mb-4 text-center">Quản lý tài khoản</h3>
-        
+
         <div class="filter-bar mb-4">
             <div class="row g-2">
                 <div class="col-md-4">
@@ -27,6 +26,7 @@
                                @bind="searchTerm" />
                     </div>
                 </div>
+
                 <div class="col-md-3">
                     <select class="form-select" @bind="selectedStatus">
                         <option value="">Tất cả trạng thái</option>
@@ -35,22 +35,23 @@
                         <option value="DELETED">Đã xóa</option>
                     </select>
                 </div>
+
                 <div class="col-md-3">
-                    <div class="d-flex">
-                        <select class="form-select" @bind="sortField">
-                            <option value="Username">Sắp xếp theo tên</option>
-                            <option value="CreatedAt">Sắp xếp theo ngày tạo</option>
-                            <option value="UpdatedAt">Sắp xếp theo ngày cập nhật</option>
-                        </select>
-                    </div>
+                    <select class="form-select" @bind="sortField">
+                        <option value="Username">Sắp xếp theo tên</option>
+                        <option value="CreatedAt">Sắp xếp theo ngày tạo</option>
+                        <option value="UpdatedAt">Sắp xếp theo ngày cập nhật</option>
+                    </select>
                 </div>
+
                 <div class="col-md-2">
-                    <button class="btn @(sortDirection == "asc" ? "btn-primary" : "btn-outline-primary") w-100" 
+                    <button class="btn @(sortDirection == "asc" ? "btn-primary" : "btn-outline-primary") w-100"
                             @onclick="ToggleSortDirection">
                         <i class="bi @(sortDirection == "asc" ? "bi-sort-up" : "bi-sort-down")"></i>
                         @(sortDirection == "asc" ? "Tăng dần" : "Giảm dần")
                     </button>
                 </div>
+
                 <div class="col-md-12">
                     <button class="btn btn-primary" @onclick="ApplyFilters">
                         <i class="bi bi-funnel-fill me-1"></i> Lọc
@@ -59,11 +60,12 @@
                         <i class="bi bi-x-circle me-1"></i> Đặt lại
                     </button>
                 </div>
+
             </div>
         </div>
 
         <div class="table-wrapper">
-            <table>
+            <table class="table table-hover">
                 <thead>
                     <tr>
                         <th class="sticky-col left">Username</th>
@@ -78,18 +80,17 @@
                         <th class="sticky-col right">Thao tác</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @if (loading)
                     {
                         <tr>
                             <td colspan="10" class="text-center py-4">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Đang tải...</span>
-                                </div>
+                                <div class="spinner-border text-primary"></div>
                             </td>
                         </tr>
                     }
-                    else if (PagedUsers?.Items == null || PagedUsers.Items.Count() == 0)
+                    else if (PagedUsers.Items == null || !PagedUsers.Items.Any())
                     {
                         <tr>
                             <td colspan="10" class="text-center py-4">
@@ -115,26 +116,11 @@
                                 </td>
                                 <td>@user.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
                                 <td>@user.UpdatedAt.ToString("dd-MM-yyyy HH:mm")</td>
-                                <td class="sticky-col right action-buttons">
-                                    @if (!user.Status.Equals("DELETED", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <button class="btn btn-sm btn-info" @onclick="() => OpenEditModal(user)" title="Chỉnh sửa">
-                                            <i class="bi bi-pencil-fill"></i>
-                                        </button>
-                                    }
-                                    
-                                    @if (user.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmAndDelete(user.Id)" title="Vô hiệu hóa">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    }
-                                    else if (user.Status.Equals("INACTIVE", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <button class="btn btn-sm btn-success" @onclick="() => Reactivate(user)" title="Kích hoạt">
-                                            <i class="bi bi-check-circle-fill"></i>
-                                        </button>
-                                    }
+
+                                <td class="sticky-col right">
+                                    <button class="btn btn-sm btn-info" @onclick="() => OpenEditModal(user)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -144,14 +130,14 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-3">
-            <div>
-                <small>
-                    Hiển thị @((CurrentPage - 1) * PageSize + 1) đến @(Math.Min(CurrentPage * PageSize, PagedUsers?.TotalItems ?? 0))
-                    trong tổng số @(PagedUsers?.TotalItems ?? 0) người dùng
-                </small>
-            </div>
+            <small>
+                Hiển thị @((CurrentPage - 1) * PageSize + 1) đến @(Math.Min(CurrentPage * PageSize, PagedUsers.TotalItems))
+                trong tổng số @PagedUsers.TotalItems người dùng
+            </small>
+
             <nav>
                 <ul class="pagination mb-0">
+
                     <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
                         <a class="page-link" @onclick="@(() => GoToPage(CurrentPage - 1))">
                             <i class="bi bi-chevron-left"></i>
@@ -160,50 +146,25 @@
 
                     @{
                         int startPage = Math.Max(1, CurrentPage - 2);
-                        int endPage = Math.Min(startPage + 4, PagedUsers?.TotalPages ?? 1);
-                        
-                        if (startPage > 1)
-                        {
-                            <li class="page-item">
-                                <a class="page-link" @onclick="@(() => GoToPage(1))">1</a>
-                            </li>
-                            if (startPage > 2)
-                            {
-                                <li class="page-item disabled">
-                                    <span class="page-link">...</span>
-                                </li>
-                            }
-                        }
-                        
+                        int endPage = Math.Min(startPage + 4, PagedUsers.TotalPages);
+
                         for (int i = startPage; i <= endPage; i++)
                         {
-                            var pageNumber = i;
                             <li class="page-item @(i == CurrentPage ? "active" : "")">
-                                <a class="page-link" @onclick="@(() => GoToPage(pageNumber))">@i</a>
-                            </li>
-                        }
-                        
-                        if (endPage < (PagedUsers?.TotalPages ?? 1))
-                        {
-                            if (endPage < (PagedUsers?.TotalPages ?? 1) - 1)
-                            {
-                                <li class="page-item disabled">
-                                    <span class="page-link">...</span>
-                                </li>
-                            }
-                            <li class="page-item">
-                                <a class="page-link" @onclick="@(() => GoToPage(PagedUsers.TotalPages))">@PagedUsers.TotalPages</a>
+                                <a class="page-link" @onclick="@(() => GoToPage(i))">@i</a>
                             </li>
                         }
                     }
 
-                    <li class="page-item @(CurrentPage == (PagedUsers?.TotalPages ?? 1) ? "disabled" : "")">
+                    <li class="page-item @(CurrentPage == PagedUsers.TotalPages ? "disabled" : "")">
                         <a class="page-link" @onclick="@(() => GoToPage(CurrentPage + 1))">
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
+
                 </ul>
             </nav>
+
         </div>
     </div>
 </div>
@@ -216,89 +177,76 @@
         <div class="form-group mb-3">
             <label>Tên đăng nhập</label>
             <InputText class="form-control" @bind-Value="EditUser.Username" disabled />
-            <ValidationMessage For="@(() => EditUser.Username)" />
         </div>
 
         <div class="form-group mb-3">
             <label>Họ và tên</label>
             <InputText class="form-control" @bind-Value="EditUser.Fullname" />
-            <ValidationMessage For="@(() => EditUser.Fullname)" />
         </div>
 
         <div class="form-group mb-3">
             <label>Số điện thoại</label>
             <InputText class="form-control" @bind-Value="EditUser.Phone" />
-            <ValidationMessage For="@(() => EditUser.Phone)" />
         </div>
 
         <div class="form-group mb-3">
             <label>Email</label>
             <InputText class="form-control" @bind-Value="EditUser.Email" />
-            <ValidationMessage For="@(() => EditUser.Email)" />
         </div>
 
         <div class="form-group mb-3">
             <label>Ngày sinh</label>
             <InputDate class="form-control" @bind-Value="EditUser.Dob" />
-            <ValidationMessage For="@(() => EditUser.Dob)" />
         </div>
 
         <div class="form-group mb-3">
             <label>Giới tính</label>
-            <div>
-                <InputRadioGroup class="form-check" @bind-Value="EditUser.Gender">
-                    <div class="form-check form-check-inline">
-                        <InputRadio class="form-check-input" Value="@("Male")" id="male" />
-                        <label class="form-check-label" for="male">Nam</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <InputRadio class="form-check-input" Value="@("Female")" id="female" />
-                        <label class="form-check-label" for="female">Nữ</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <InputRadio class="form-check-input" Value="@("Other")" id="other" />
-                        <label class="form-check-label" for="other">Khác</label>
-                    </div>
-                </InputRadioGroup>
-                <ValidationMessage For="@(() => EditUser.Gender)" />
-            </div>
+            <InputRadioGroup @bind-Value="EditUser.Gender">
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Value="@("Male")" />
+                    <label class="form-check-label">Nam</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Value="@("Female")" />
+                    <label class="form-check-label">Nữ</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Value="@("Other")" />
+                    <label class="form-check-label">Khác</label>
+                </div>
+            </InputRadioGroup>
         </div>
 
         <div class="form-group mb-3">
-            <div class="form-check">
-                <InputCheckbox class="form-check-input" @bind-Value="_isActive" id="isActive" />
-                <label class="form-check-label" for="isActive">
-                    Kích hoạt tài khoản
-                </label>
-            </div>
+            <InputCheckbox class="form-check-input" @bind-Value="_isActive" />
+            <label class="form-check-label">Kích hoạt tài khoản</label>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">
-            <button type="button" class="btn btn-secondary" @onclick="() => IsEditModalOpen = false">Hủy bỏ</button>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-save me-1"></i> Cập nhật
-            </button>
+            <button type="button" class="btn btn-secondary" @onclick="() => IsEditModalOpen = false">Hủy</button>
+            <button type="submit" class="btn btn-primary">Lưu</button>
         </div>
     </Modal>
 </EditForm>
 
 @code {
+
     private PaginationResponseDto<UserResponseDto> PagedUsers = new();
-    private List<UserResponseDto> AllUsers = new(); // Loaded once
 
     private int CurrentPage = 1;
     private int PageSize = 10;
-    private bool IsEditModalOpen = false;
-    private UserRequestDto EditUser = new();
-    private int EditUserId;
     private bool loading = true;
-    
-    // Filter and sorting states
+
+    private bool IsEditModalOpen = false;
+    private int EditUserId;
+    private UserRequestDto EditUser = new();
+
+    // Filters
     private string searchTerm = "";
     private string selectedStatus = "";
     private string sortField = "Username";
     private string sortDirection = "asc";
-    
+
     private bool _isActive
     {
         get => EditUser.Status == "ACTIVE";
@@ -306,39 +254,93 @@
     }
 
     protected override async Task OnInitializedAsync()
-    { 
+    {
         var role = await localStorage.GetItemAsync<string>("userRole");
         if (role != "admin")
         {
             Navigation.NavigateTo("/");
+            return;
         }
-    
+
         await LoadUsers();
     }
 
+    // -----------------------------
+    // 🔥 Load users via OData API
+    // -----------------------------
     private async Task LoadUsers()
     {
         loading = true;
+
         try
         {
-            // Only fetch if AllUsers is empty (first load)
-            if (!AllUsers.Any())
-            {
-                var response = await Http.GetFromJsonAsync<List<UserResponseDto>>("api/user");
+            var filterParts = new List<string>();
 
-                if (response != null)
-                {
-                    AllUsers = response;
-                }
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lower = searchTerm.ToLower();
+                filterParts.Add($"(contains(tolower(Username), '{lower}') or contains(tolower(Fullname), '{lower}'))");
             }
 
-            // Apply filters and pagination locally
-            HandleFilters();
+            if (!string.IsNullOrWhiteSpace(selectedStatus))
+            {
+                filterParts.Add($"Status eq '{selectedStatus}'");
+            }
+
+            var queryParams = new List<string>();
+
+            if (filterParts.Any())
+            {
+                queryParams.Add($"$filter={string.Join(" and ", filterParts)}");
+            }
+
+            var orderByField = sortField switch
+            {
+                "CreatedAt" => "CreatedAt",
+                "UpdatedAt" => "UpdatedAt",
+                _ => "Username"
+            };
+
+            queryParams.Add($"$orderby={orderByField} {sortDirection}");
+
+            var skip = (CurrentPage - 1) * PageSize;
+            queryParams.Add($"$skip={skip}");
+            queryParams.Add($"$top={PageSize}");
+            queryParams.Add("$count=true");
+
+            var query = string.Join("&", queryParams);
+
+            var url = $"api/user?{query}";
+
+            var odataResult = await Http.GetFromJsonAsync<List<UserResponseDto>>(url);
+
+            if (odataResult != null)
+            {
+                var items = odataResult ?? new();
+                var totalItems = odataResult.Count;
+                var totalPages = (int)Math.Ceiling(totalItems / (double)PageSize);
+                if (totalPages == 0) totalPages = 1;
+
+                PagedUsers = new PaginationResponseDto<UserResponseDto>
+                {
+                    Items = items,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages
+                };
+            }
+            else
+            {
+                PagedUsers = new PaginationResponseDto<UserResponseDto>
+                {
+                    Items = new List<UserResponseDto>(),
+                    TotalItems = 0,
+                    TotalPages = 1
+                };
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading users: {ex.Message}");
-            AllUsers = new List<UserResponseDto>();
+            Console.WriteLine($"OData Load Error: {ex.Message}");
             PagedUsers = new PaginationResponseDto<UserResponseDto>
             {
                 Items = new List<UserResponseDto>(),
@@ -353,157 +355,27 @@
         }
     }
 
-    private void HandleFilters()
-    {
-        IEnumerable<UserResponseDto> filtered = AllUsers;
-
-        // Search
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var lower = searchTerm.ToLower();
-            filtered = filtered.Where(u =>
-                (!string.IsNullOrEmpty(u.Fullname) && u.Fullname.ToLower().Contains(lower)) ||
-                (!string.IsNullOrEmpty(u.Username) && u.Username.ToLower().Contains(lower)));
-        }
-
-        // Status
-        if (!string.IsNullOrWhiteSpace(selectedStatus))
-        {
-            filtered = filtered.Where(u => u.Status == selectedStatus);
-        }
-
-        // Sort
-        filtered = sortField switch
-        {
-            "Username" => sortDirection == "asc" ? filtered.OrderBy(u => u.Username) : filtered.OrderByDescending(u => u.Username),
-            "CreatedAt" => sortDirection == "asc" ? filtered.OrderBy(u => u.CreatedAt) : filtered.OrderByDescending(u => u.CreatedAt),
-            "UpdatedAt" => sortDirection == "asc" ? filtered.OrderBy(u => u.UpdatedAt) : filtered.OrderByDescending(u => u.UpdatedAt),
-            _ => filtered
-        };
-
-        // Pagination
-        var totalItems = filtered.Count();
-        var totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
-
-        var items = filtered
-            .Skip((CurrentPage - 1) * PageSize)
-            .Take(PageSize)
-            .ToList();
-
-        PagedUsers = new PaginationResponseDto<UserResponseDto>
-        {
-            Items = items,
-            TotalItems = totalItems,
-            TotalPages = totalPages
-        };
-    }
-
     private async Task ApplyFilters()
     {
         CurrentPage = 1;
-        HandleFilters();
-        await Task.CompletedTask;
+        await LoadUsers();
     }
-    
+
     private void ResetFilters()
     {
-        searchTerm = string.Empty;
-        selectedStatus = string.Empty;
+        searchTerm = "";
+        selectedStatus = "";
         sortField = "Username";
         sortDirection = "asc";
         CurrentPage = 1;
 
-        HandleFilters();
+        _ = LoadUsers();
     }
-    
+
     private void ToggleSortDirection()
     {
         sortDirection = sortDirection == "asc" ? "desc" : "asc";
-    }
-
-    private async Task Reactivate(UserResponseDto user)
-    {
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Bạn có chắc chắn muốn kích hoạt tài khoản {user.Username} không?");
-        if (!confirmed) return;
-
-        var request = new UserRequestDto
-        {
-            Username = user.Username,
-            Password = "",
-            Fullname = user.Fullname,
-            Phone = user.Phone,
-            Email = user.Email,
-            Dob = user.Dob,
-            Gender = user.Gender,
-            Status = "ACTIVE",
-            CreatedAt = user.CreatedAt,
-            RoleIds = user.RoleIds?.ToList() ?? new List<int>()
-        };
-        
-        var response = await Http.PutAsJsonAsync($"api/user/{user.Id}", request);
-        if (response.IsSuccessStatusCode)
-        {
-			ToastService.ShowSuccess($"Tài khoản {user.Username} đã được kích hoạt thành công.");
-            await LoadUsers();
-        }
-        else
-        {
-			ToastService.ShowError("Không thể kích hoạt tài khoản. Vui lòng thử lại sau.");
-        }
-    }
-
-    private async Task ConfirmAndDelete(int id)
-    {
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn vô hiệu hóa tài khoản này không?");
-        if (!confirmed) return;
-
-        var response = await Http.DeleteAsync($"api/user/{id}");
-
-        if (response.IsSuccessStatusCode)
-        {
-			ToastService.ShowSuccess("Tài khoản đã được vô hiệu hóa thành công.");
-            await LoadUsers();
-        }
-        else
-        {
-			ToastService.ShowError("Không thể vô hiệu hóa tài khoản. Vui lòng thử lại sau.");
-        }
-    }
-
-    private void OpenEditModal(UserResponseDto user)
-    {
-        EditUserId = user.Id;
-        EditUser = new UserRequestDto
-        {
-            Username = user.Username,
-            Fullname = user.Fullname,
-            Phone = user.Phone,
-            Email = user.Email,
-            Dob = user.Dob,
-            Gender = user.Gender,
-            Status = user.Status,
-            CreatedAt = user.CreatedAt,
-            RoleIds = user.RoleIds?.ToList() ?? new List<int>()
-        };
-        IsEditModalOpen = true;
-    }
-
-    private async Task HandleUpdate()
-    {
-        EditUser.Password = "";
-        var response = await Http.PutAsJsonAsync($"api/user/{EditUserId}", EditUser);
-
-        if (response.IsSuccessStatusCode)
-        {
-			ToastService.ShowSuccess("Cập nhật thông tin người dùng thành công.");
-            IsEditModalOpen = false;
-            await LoadUsers();
-        }
-        else
-        {
-            var errorContent = await response.Content.ReadAsStringAsync();
-			ToastService.ShowError($"Cập nhật thông tin người dùng thất bại");
-        }
+        _ = LoadUsers();
     }
 
     private async Task GoToPage(int page)
@@ -514,25 +386,62 @@
             await LoadUsers();
         }
     }
-    
+
+    private void OpenEditModal(UserResponseDto user)
+    {
+        EditUserId = user.Id;
+
+        EditUser = new UserRequestDto
+        {
+            Username = user.Username,
+            Fullname = user.Fullname,
+            Phone = user.Phone,
+            Email = user.Email,
+            Dob = user.Dob,
+            Gender = user.Gender,
+            Status = user.Status,
+            CreatedAt = user.CreatedAt,
+            RoleIds = user.RoleIds?.ToList() ?? new()
+        };
+
+        IsEditModalOpen = true;
+    }
+
+    private async Task HandleUpdate()
+    {
+        EditUser.Password = "";
+
+        var res = await Http.PutAsJsonAsync($"api/user/{EditUserId}", EditUser);
+
+        if (res.IsSuccessStatusCode)
+        {
+            ToastService.ShowSuccess("Cập nhật người dùng thành công");
+            IsEditModalOpen = false;
+
+            await LoadUsers();
+        }
+        else
+        {
+            ToastService.ShowError("Cập nhật thất bại");
+        }
+    }
+
     private string GetStatusBadgeClass(string status)
     {
         return status.ToUpper() switch
         {
             "ACTIVE" => "bg-success",
             "INACTIVE" => "bg-warning",
-            "DELETED" => "bg-danger",
             _ => "bg-secondary"
         };
     }
-    
+
     private string GetStatusDisplayName(string status)
     {
         return status.ToUpper() switch
         {
             "ACTIVE" => "Kích hoạt",
             "INACTIVE" => "Chưa kích hoạt",
-            "DELETED" => "Đã xóa",
             _ => status
         };
     }

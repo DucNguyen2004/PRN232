@@ -4,17 +4,30 @@ namespace DTOs
 {
     public class ProductRequestDto
     {
-        [Required]
+        [Required(ErrorMessage = "Tên sản phẩm không được để trống.")]
+        [MaxLength(100, ErrorMessage = "Tên sản phẩm không được vượt quá 100 ký tự.")]
         public string Name { get; set; }
-        [Required]
+
+        [Required(ErrorMessage = "Danh mục không được để trống.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Danh mục không hợp lệ.")]
         public int CategoryId { get; set; }
-        [Required]
+
+        [Required(ErrorMessage = "Mô tả sản phẩm không được để trống.")]
+        [MaxLength(500, ErrorMessage = "Mô tả không được dài quá 500 ký tự.")]
         public string Description { get; set; }
+
+        [Required(ErrorMessage = "Giá sản phẩm không được để trống.")]
+        [Range(0, int.MaxValue, ErrorMessage = "Giá sản phẩm phải lớn hơn hoặc bằng 0.")]
         public int Price { get; set; }
-        public DateTime CreateAt { get; set; }
-        [Required]
+
+        public DateTime CreateAt { get; set; } = DateTime.Now;
+
+        [Required(ErrorMessage = "Trạng thái sản phẩm không được để trống.")]
+        [RegularExpression("ACTIVE|INACTIVE", ErrorMessage = "Trạng thái chỉ có thể là ACTIVE hoặc INACTIVE.")]
         public string Status { get; set; }
+
         public ICollection<string> Images { get; set; } = new List<string>();
+
         public ICollection<ProductOptionRequestDto> Options { get; set; } = new List<ProductOptionRequestDto>();
     }
 

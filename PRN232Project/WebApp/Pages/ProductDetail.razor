@@ -64,9 +64,6 @@
                     <input type="number" class="form-control" style="width:80px;" min="1" value="@quantity" @oninput="OnQuantityChanged" />
                     <AddToCartButton ProductId="@product.Id" Options="@SelectedOptionIds" Quantity="@quantity" />
                 </div>
-                @* <p class="text-muted small">
-                    Selected option IDs: @string.Join(", ", selectedOptions.Values.Select(o => o.Id))
-                </p> *@
                 <button class="btn btn-outline-secondary" @onclick="GoBack"><i class="bi bi-arrow-left me-2"></i>Quay lại thực đơn</button>
             </div>
         </div>
